@@ -1,0 +1,121 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # HoneyForge Central Management Server (C2)
+  # ==========================================
+  honeyforge-c2:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.server
+    container_name: honeyforge-c2
+    restart: unless-stopped
+    networks:
+      honeyforge_mgmt:
+        ipv4_address: 172.29.0.2
+    ports:
+      - "8000:8000"
+    environment:
+      - HONEYFORGE_HOST=0.0.0.0
+      - HONEYFORGE_PORT=8000
+      - DATABASE_URL=sqlite+aiosqlite:///./honeyforge.db
+      - JWT_SECRET=honeyforge-soc-super-secret-key-2026
+    volumes:
+      - c2_data:/app
+
+  # ==========================================
+  # Nginx Reverse Proxy with Stealth Routing
+  # ==========================================
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: honeyforge-nginx
+    restart: unless-stopped
+    networks:
+      honeyforge_mgmt:
+        ipv4_address: 172.29.0.3
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - honeyforge-c2
+
+  # ==========================================
+  # Low-Interaction Perimeter Trap (DMZ)
+  # ==========================================
+  honeyforge-trap-low:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.agent
+    container_name: systemd-resolved-low  # Process masquerade (MASK-4)
+    restart: unless-stopped
+    networks:
+      honeynet_dmz:
+        ipv4_address: 172.28.0.10
+      honeyforge_mgmt:
+        ipv4_address: 172.29.0.10
+    ports:
+      - "2121:2121"
+      - "2323:2323"
+      - "6379:6379"
+    environment:
+      - TRAP_ID=trap-low-01
+      - TRAP_NAME=DMZ-Perimeter-Trap-01
+      - SECRET_KEY=secret-key-low-01
+      - C2_URL=http://honeyforge-c2:8000
+      - INTERACTION_LEVEL=low
+      - PROC_NAME=systemd-resolved
+      - BEACON_INTERVAL=8
+      - JITTER_PCT=30
+    depends_on:
+      - honeyforge-c2
+
+  # ==========================================
+  # Medium-Interaction SSH & Web Trap
+  # ==========================================
+  honeyforge-trap-med:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.agent
+    container_name: rsyslogd-med  # Process masquerade (MASK-4)
+    restart: unless-stopped
+    networks:
+      honeynet_dmz:
+        ipv4_address: 172.28.0.20
+      honeyforge_mgmt:
+        ipv4_address: 172.29.0.20
+    ports:
+      - "2222:2222"
+      - "8088:8088"
+    environment:
+      - TRAP_ID=trap-med-01
+      - TRAP_NAME=Internal-SSH-Trap-02
+      - SECRET_KEY=secret-key-med-01
+      - C2_URL=http://honeyforge-c2:8000
+      - INTERACTION_LEVEL=medium
+      - SSH_PORT=2222
+      - WEB_PORT=8088
+      - PROC_NAME=rsyslogd
+      - BEACON_INTERVAL=6
+      - JITTER_PCT=40
+    depends_on:
+      - honeyforge-c2
+
+networks:
+  # Segment for simulated attackers (DMZ)
+  honeynet_dmz:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+  # Out-of-band management segment for stealth C2 control (MASK-3)
+  honeyforge_mgmt:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.29.0.0/16
+
+volumes:
+  c2_data:

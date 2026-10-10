@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HoneyForge — Cyber SOC Honeypot C2 Platform</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <!-- Header & Navigation -->
+    <header>
+        <div class="brand">
+            <div class="brand-icon">HF</div>
+            <div class="brand-text">
+                <h1>HONEYFORGE C2</h1>
+                <span>Stealth Honeypot Deception Platform</span>
+            </div>
+        </div>
+
+        <nav class="nav-tabs">
+            <button class="nav-btn active" onclick="switchTab('tab-live')">Live SOC Stream</button>
+            <button class="nav-btn" onclick="switchTab('tab-traps')">Fleet Traps</button>
+            <button class="nav-btn" onclick="switchTab('tab-profiles')">Profile Constructor</button>
+            <button class="nav-btn" onclick="switchTab('tab-sessions')">Session Replay</button>
+            <button class="nav-btn" onclick="switchTab('tab-honeytokens')">Honeytokens Hub</button>
+            <button class="nav-btn" onclick="switchTab('tab-threatintel')">IoC & Threat Intel</button>
+        </nav>
+
+        <div class="header-status">
+            <div class="live-badge" id="ws-badge">
+                <span class="pulse-dot"></span>
+                <span id="ws-status-text">C2 Realtime Linked</span>
+            </div>
+            <button class="btn btn-secondary" onclick="exportIoC('stix')">Export STIX 2.1</button>
+        </div>
+    </header>
+
+    <div class="container">
+        
+        <!-- Top Metrics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-title">Active Traps</div>
+                <div class="stat-value"><span id="metric-online-traps">0</span> / <span id="metric-total-traps" style="font-size: 16px; color: var(--text-muted);">0</span></div>
+                <div class="stat-sub">DMZ & Internal Traps</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Interceptions</div>
+                <div class="stat-value" id="metric-total-events" style="color: var(--cyan);">0</div>
+                <div class="stat-sub">Scans, Auth & Probes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Critical Threats</div>
+                <div class="stat-value" id="metric-critical-events" style="color: var(--red);">0</div>
+                <div class="stat-sub">Malware & Shell Injections</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Captured Credentials</div>
+                <div class="stat-value" id="metric-credentials" style="color: var(--amber);">0</div>
+                <div class="stat-sub">Brute-force harvested pairs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Canary Honeytokens</div>
+                <div class="stat-value"><span id="metric-ht-triggered" style="color: var(--purple);">0</span> / <span id="metric-ht-total" style="font-size: 16px; color: var(--text-muted);">0</span></div>
+                <div class="stat-sub">Armed Decoy Traps</div>
+            </div>
+        </div>
+
+        <!-- Live Demo Attack Simulator Control Bar -->
+        <div class="control-bar">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size: 12px; font-weight: 700; color: var(--cyan); text-transform: uppercase;">
+                    ⚡ Live Attack Simulator (Jury Demo):
+                </span>
+                <span style="font-size: 12px; color: var(--text-muted);">
+                    Test live honeypot reaction with 1 click
+                </span>
+            </div>
+            <div class="sim-buttons">
+                <button class="btn btn-cyan" onclick="runSim('port_scan')">⚡ 1. Port Recon (Low)</button>
+                <button class="btn btn-amber" onclick="runSim('ssh_brute_force')">🔑 2. SSH Brute Force (Medium)</button>
+                <button class="btn btn-primary" onclick="runSim('post_exploitation')">💀 3. Interactive Shell & Malware</button>
+                <button class="btn btn-danger" onclick="runSim('honeytoken_breach')">🚨 4. Honeytoken Breach</button>
+            </div>
+        </div>
+
+        <!-- TAB 1: Live Attack Center -->
+        <div id="tab-live" class="tab-pane active">
+            <div class="dashboard-grid">
+                
+                <!-- Left: Live Attack Feed -->
+                <div class="card-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <span style="color: var(--cyan);">●</span> Live Attack Activity Stream
+                        </div>
+                        <div style="font-size: 12px; color: var(--text-muted);">
+                            Auto-updating via WebSocket
+                        </div>
+                    </div>
+                    <div class="feed-container" id="attack-feed">
+                        <!-- Attack event items rendered here -->
+                    </div>
+                </div>
+
+                <!-- Right: Active Alerts & Summary Charts -->
+                <div>
+                    <!-- Active Correlated Alerts -->
+                    <div class="card-panel">
+                        <div class="panel-header">
+                            <div class="panel-title" style="color: var(--red);">
+                                🚨 Correlated SOC Alerts
+                            </div>
+                        </div>
+                        <div style="padding: 12px; max-height: 240px; overflow-y: auto;" id="alerts-list">
+                            <div style="color: var(--text-muted); font-size: 12px; text-align: center; padding: 20px;">
+                                No active critical alert thresholds exceeded.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top Attacker IPs & Target Ports -->
+                    <div class="card-panel">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                📊 Attack Surface Breakdown
+                            </div>
+                        </div>
+                        <div style="padding: 16px;">
+                            <canvas id="attackTypeChart" height="180"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TAB 2: Fleet Traps Manager -->
+        <div id="tab-traps" class="tab-pane">
+            <div class="card-panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        🛡️ Distributed Honeypot Traps Fleet (DMZ & Internal)
+                    </div>
+                    <div>
+                        <button class="btn btn-cyan" onclick="openRegisterTrapModal()">+ Register New Trap</button>
+                    </div>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Trap ID</th>
+                            <th>Name</th>
+                            <th>Profile</th>
+                            <th>Level</th>
+                            <th>DMZ IP</th>
+                            <th>OOB Mgmt IP</th>
+                            <th>Status</th>
+                            <th>Last Seen</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="traps-table-body">
+                        <!-- Traps rows populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 3: Profile Constructor -->
+        <div id="tab-profiles" class="tab-pane">
+            <div class="card-panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        ⚙️ Deception Profiles Constructor (FR-C1)
+                    </div>
+                    <div>
+                        <button class="btn btn-cyan" onclick="openCreateProfileModal()">+ Create New Profile</button>
+                    </div>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Profile Name</th>
+                            <th>Interaction Level</th>
+                            <th>Emulated Services</th>
+                            <th>Stealth Masquerade</th>
+                            <th>Beacon Jitter</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody id="profiles-table-body">
+                        <!-- Profiles populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 4: Session Replay (Asciinema style) -->
+        <div id="tab-sessions" class="tab-pane">
+            <div class="card-panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        📼 Interactive Shell Session Recordings (Asciinema Style)
+                    </div>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Session ID</th>
+                            <th>Trap ID</th>
+                            <th>Source Attacker IP</th>
+                            <th>Protocol</th>
+                            <th>Commands Count</th>
+                            <th>Captured Artifacts</th>
+                            <th>Time</th>
+                            <th>Replay</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sessions-table-body">
+                        <!-- Sessions populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 5: Honeytokens Hub -->
+        <div id="tab-honeytokens" class="tab-pane">
+            <div class="card-panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        🪤 Honeytokens Decoy Management (FR-A6)
+                    </div>
+                    <div>
+                        <button class="btn btn-cyan" onclick="openCreateHoneytokenModal()">+ Plant Canary Honeytoken</button>
+                    </div>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Token ID</th>
+                            <th>Type</th>
+                            <th>Decoy Target Path / Value</th>
+                            <th>Trap Location</th>
+                            <th>Status</th>
+                            <th>Breach Time</th>
+                            <th>Attacker IP</th>
+                        </tr>
+                    </thead>
+                    <tbody id="honeytokens-table-body">
+                        <!-- Honeytokens populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 6: Threat Intel & IoC Export -->
+        <div id="tab-threatintel" class="tab-pane">
+            <div class="card-panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        📦 Indicators of Compromise (IoC) Export Center (FR-C7)
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-primary" onclick="exportIoC('stix')">STIX 2.1 JSON</button>
+                        <button class="btn btn-secondary" onclick="exportIoC('csv')">CSV Export</button>
+                        <button class="btn btn-secondary" onclick="exportIoC('suricata')">Suricata IDS Rules</button>
+                    </div>
+                </div>
+                <div style="padding: 16px;">
+                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">
+                        STIX 2.1 Threat Intelligence Bundle Preview:
+                    </div>
+                    <pre class="code-block" id="ioc-preview-block">Loading IoC bundle...</pre>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MODAL: Deploy Artifact Generator -->
+    <div class="modal-overlay" id="modal-deploy">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-deploy-title" style="color: var(--cyan);">1-Click Trap Deployment (FR-C6)</h3>
+                <button class="modal-close" onclick="closeModal('modal-deploy')">&times;</button>
+            </div>
+            <div style="margin-bottom: 12px; display:flex; gap:8px;">
+                <button class="btn btn-secondary" onclick="switchDeployFormat('docker-compose')">docker-compose.yml</button>
+                <button class="btn btn-secondary" onclick="switchDeployFormat('bash')">Linux Bash (curl)</button>
+                <button class="btn btn-secondary" onclick="switchDeployFormat('powershell')">Windows PowerShell</button>
+            </div>
+            <pre class="code-block" id="deploy-code-block"></pre>
+            <div style="margin-top: 16px; display:flex; justify-content: flex-end;">
+                <button class="btn btn-primary" onclick="copyDeployCode()">Copy Deployment Artifact</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Session Replay Terminal -->
+    <div class="modal-overlay" id="modal-replay">
+        <div class="modal-content" style="width: 800px;">
+            <div class="modal-header">
+                <h3 style="color: var(--green);">📼 Interactive Terminal Session Replay</h3>
+                <button class="modal-close" onclick="closeModal('modal-replay')">&times;</button>
+            </div>
+            <div id="session-terminal" class="code-block" style="background:#000; color:#4ade80; height: 420px; font-size:13px; font-family: monospace;">
+                <!-- Replay outputs rendered here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Create Profile -->
+    <div class="modal-overlay" id="modal-create-profile">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 style="color: var(--cyan);">Create Deception Profile (FR-C1)</h3>
+                <button class="modal-close" onclick="closeModal('modal-create-profile')">&times;</button>
+            </div>
+            <form onsubmit="submitCreateProfile(event)">
+                <div class="form-group">
+                    <label>Profile Name</label>
+                    <input type="text" id="prof-name" class="form-input" placeholder="e.g. Banking-Perimeter-Trap" required>
+                </div>
+                <div class="form-group">
+                    <label>Interaction Level</label>
+                    <select id="prof-level" class="form-select">
+                        <option value="low">Low (Port scanner & banners)</option>
+                        <option value="medium" selected>Medium (Fake SSH, Web Admin, Fake FS)</option>
+                        <option value="high">High (Sandbox container isolation)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Services to Emulate (comma separated)</label>
+                    <input type="text" id="prof-services" class="form-input" value="ssh, http, redis">
+                </div>
+                <div class="form-group">
+                    <label>Process Masquerade Name (MASK-4)</label>
+                    <input type="text" id="prof-proc" class="form-input" value="systemd-resolved">
+                </div>
+                <div class="form-group">
+                    <label>Beacon Jitter Percentage (MASK-5)</label>
+                    <input type="number" id="prof-jitter" class="form-input" value="35" min="10" max="60">
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:8px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-create-profile')">Cancel</button>
+                    <button type="submit" class="btn btn-cyan">Save Profile</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
