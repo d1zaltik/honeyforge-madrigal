@@ -1,4 +1,4 @@
-version: '3.8'
+name: honeyforge
 
 services:
   # ==========================================
@@ -112,7 +112,6 @@ networks:
   # Out-of-band management segment for stealth C2 control (MASK-3)
   honeyforge_mgmt:
     driver: bridge
-    internal: true
     ipam:
       config:
         - subnet: 172.29.0.0/16

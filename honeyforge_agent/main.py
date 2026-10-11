@@ -154,7 +154,7 @@ if __name__ == "__main__":
     asyncio.set_event_loop(loop)
     try:
         loop.run_until_complete(agent.start())
-        print(f"[*] HoneyForge Agent running ({agent.config.TRAP_ID}) level={agent.config.INTERACTION_LEVEL}")
+        print(f"[*] HoneyForge Agent running ({agent.trap_id}) level={agent.interaction_level}")
         loop.run_forever()
     except KeyboardInterrupt:
         loop.run_until_complete(agent.stop())
