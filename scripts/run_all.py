@@ -21,9 +21,9 @@ async def run_platform():
   🛡️  HONEYFORGE PLATFORM ALL-IN-ONE STANDALONE RUNNER  🛡️
 ======================================================================
   [+] C2 Web-UI Dashboard : http://localhost:8000
-  [+] Disguised Telemetry  : http://localhost:8000/v1/telemetry/collect
+  [+] Disguised Telemetry  : http://localhost:8000/cdn-cgi/rum
   [+] Low-Interaction Trap: Ports 2121 (FTP), 2323 (Telnet), 6379 (Redis)
-  [+] Medium Trap (SSH)   : Port 2222 (root:admin123)
+  [+] Medium Trap (SSH)   : Port 2222 (Decoy credentials enabled)
   [+] Medium Trap (Web)   : Port 8088 (http://localhost:8088)
 ======================================================================
     """)
@@ -36,11 +36,14 @@ async def run_platform():
     # Wait for C2 to be ready
     await asyncio.sleep(1.5)
 
+    low_secret = os.getenv("NODE_KEY_LOW") or os.getenv("SECRET_KEY_LOW") or secrets.token_hex(24)
+    med_secret = os.getenv("NODE_KEY_MED") or os.getenv("SECRET_KEY_MED") or secrets.token_hex(24)
+
     # 2. Start Agent 1: Low-Interaction Perimeter Trap
     agent_low = HoneyForgeAgent(
         trap_id="trap-low-01",
         trap_name="DMZ-Perimeter-Trap-01",
-        secret_key="secret-key-low-01",
+        secret_key=low_secret,
         interaction_level="low",
         buffer_db_path=".trap_low.store.db",
         low_ports=[2121, 2323, 6379]
@@ -51,8 +54,8 @@ async def run_platform():
     # 3. Start Agent 2: Medium-Interaction SSH & Web Trap
     agent_med = HoneyForgeAgent(
         trap_id="trap-med-01",
-        trap_name="Internal-SSH-Trap-02",
-        secret_key="secret-key-med-01",
+        trap_name="Internal-SSH-Trap-01",
+        secret_key=med_secret,
         interaction_level="medium",
         buffer_db_path=".trap_med.store.db",
         ssh_port=2222,

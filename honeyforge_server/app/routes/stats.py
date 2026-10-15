@@ -5,11 +5,15 @@ from sqlalchemy import select, func, desc
 from honeyforge_server.app.database import get_db
 from honeyforge_server.app.models import Trap, AttackEvent, Honeytoken, AuditLog
 from honeyforge_server.app.schemas import OverviewStats
+from honeyforge_server.app.security import get_current_user
 
 router = APIRouter(prefix="/stats", tags=["Dashboard Statistics"])
 
 @router.get("/overview", response_model=OverviewStats)
-async def get_overview_stats(db: AsyncSession = Depends(get_db)):
+async def get_overview_stats(
+    user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     # Total traps
     tot_traps_res = await db.execute(select(func.count(Trap.id)))
     total_traps = tot_traps_res.scalar() or 0
@@ -17,11 +21,17 @@ async def get_overview_stats(db: AsyncSession = Depends(get_db)):
     online_traps_res = await db.execute(select(func.count(Trap.id)).where(Trap.status == "online"))
     online_traps = online_traps_res.scalar() or 0
     
+    # Traps breakdown
+    low_traps_res = await db.execute(select(func.count(Trap.id)).where(Trap.interaction_level == "low"))
+    traps_low = low_traps_res.scalar() or 0
+    med_traps_res = await db.execute(select(func.count(Trap.id)).where(Trap.interaction_level.in_(["medium", "high"])))
+    traps_medium = med_traps_res.scalar() or 0
+
     # Events
     tot_ev_res = await db.execute(select(func.count(AttackEvent.id)))
     total_events = tot_ev_res.scalar() or 0
     
-    crit_ev_res = await db.execute(select(func.count(AttackEvent.id)).where(AttackEvent.severity.in_(["high", "critical"])))
+    crit_ev_res = await db.execute(select(func.count(AttackEvent.id)).where(AttackEvent.severity.in_(["critical"])))
     critical_events = crit_ev_res.scalar() or 0
     
     # Credentials & payloads
@@ -31,19 +41,32 @@ async def get_overview_stats(db: AsyncSession = Depends(get_db)):
     payloads_res = await db.execute(select(func.count(AttackEvent.id)).where(AttackEvent.artifact_hash.isnot(None)))
     captured_payloads = payloads_res.scalar() or 0
     
-    # Honeytokens
+    # Honeytokens: count total and triggered
     ht_tot_res = await db.execute(select(func.count(Honeytoken.id)))
     honeytokens_count = ht_tot_res.scalar() or 0
     
     ht_trig_res = await db.execute(select(func.count(Honeytoken.id)).where(Honeytoken.is_triggered == True))
     honeytokens_triggered = ht_trig_res.scalar() or 0
     
-    # Top attackers
-    top_att_query = select(AttackEvent.source_ip, func.count(AttackEvent.id).label("count")).group_by(
-        AttackEvent.source_ip
+    # Top attackers with country and ASN
+    top_att_query = select(
+        AttackEvent.source_ip,
+        AttackEvent.geo_country,
+        AttackEvent.source_asn,
+        func.count(AttackEvent.id).label("count")
+    ).group_by(
+        AttackEvent.source_ip, AttackEvent.geo_country, AttackEvent.source_asn
     ).order_by(desc("count")).limit(5)
     top_att_res = await db.execute(top_att_query)
-    top_attackers = [{"ip": row[0], "count": row[1]} for row in top_att_res.all()]
+    top_attackers = [
+        {
+            "ip": row[0],
+            "country": row[1] if row[1] and row[1] != "Unknown" else "Тестовая сеть",
+            "asn": row[2] if row[2] else "AS-LOCAL",
+            "count": row[3]
+        }
+        for row in top_att_res.all()
+    ]
     
     # Top ports
     top_port_query = select(AttackEvent.destination_port, AttackEvent.protocol, func.count(AttackEvent.id).label("count")).group_by(
@@ -62,6 +85,8 @@ async def get_overview_stats(db: AsyncSession = Depends(get_db)):
     return OverviewStats(
         total_traps=total_traps,
         online_traps=online_traps,
+        traps_low=traps_low,
+        traps_medium=traps_medium,
         total_events=total_events,
         critical_events=critical_events,
         captured_credentials=captured_credentials,
@@ -74,7 +99,11 @@ async def get_overview_stats(db: AsyncSession = Depends(get_db)):
     )
 
 @router.get("/audit")
-async def list_audit_logs(limit: int = 50, db: AsyncSession = Depends(get_db)):
+async def list_audit_logs(
+    limit: int = 50,
+    user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(AuditLog).order_by(desc(AuditLog.timestamp)).limit(limit))
     logs = result.scalars().all()
     return logs

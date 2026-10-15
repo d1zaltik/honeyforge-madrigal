@@ -22,6 +22,43 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     user: UserOut
 
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    role: str = "analyst_l1"
+
+class UserRoleUpdate(BaseModel):
+    role: str
+
+class UserStatusUpdate(BaseModel):
+    is_active: bool
+
+class UserPasswordReset(BaseModel):
+    new_password: str
+
+class KeyStoreExportRequest(BaseModel):
+    master_password: str
+    description: Optional[str] = "HoneyForge SOC KeyStore"
+
+class KeyStoreInspectRequest(BaseModel):
+    master_password: str
+    keystore_data: Any  # JSON-serialized string or parsed object
+
+# ----------------- Persona Schemas -----------------
+class PersonaSchema(BaseModel):
+    hostname: str = Field(default="prod-srv-01", description="System hostname")
+    os: str = Field(default="Ubuntu 22.04.4 LTS", description="Operating System release name")
+    kernel: str = Field(default="5.15.0-105-generic", description="Kernel release string")
+    users: List[str] = Field(default_factory=lambda: ["root", "deploy", "ubuntu"], description="Simulated system accounts")
+    uptime_base: int = Field(default=172800, description="Base uptime in seconds")
+    timezone: str = Field(default="UTC", description="System timezone")
+    banners: Dict[str, str] = Field(default_factory=dict, description="Custom protocol banners by port")
+    mac: Optional[str] = Field(default="02:42:0a:c8:00:2c", description="Primary NIC MAC address")
+    ip: Optional[str] = Field(default="10.0.1.5", description="Simulated host IP address")
+
+    class Config:
+        extra = "allow"
+
 # ----------------- Profile Schemas -----------------
 class ProfileCreate(BaseModel):
     name: str
@@ -33,6 +70,7 @@ class ProfileCreate(BaseModel):
     honeytokens_config: List[Dict[str, Any]] = Field(default_factory=list)
     logging_params: Dict[str, Any] = Field(default_factory=dict)
     stealth_params: Dict[str, Any] = Field(default_factory=dict)
+    persona: PersonaSchema = Field(default_factory=PersonaSchema)
 
 class ProfileUpdate(BaseModel):
     name: Optional[str] = None
@@ -44,6 +82,7 @@ class ProfileUpdate(BaseModel):
     honeytokens_config: Optional[List[Dict[str, Any]]] = None
     logging_params: Optional[Dict[str, Any]] = None
     stealth_params: Optional[Dict[str, Any]] = None
+    persona: Optional[PersonaSchema] = None
 
 class ProfileOut(BaseModel):
     id: int
@@ -56,8 +95,10 @@ class ProfileOut(BaseModel):
     honeytokens_config: List[Dict[str, Any]]
     logging_params: Dict[str, Any]
     stealth_params: Dict[str, Any]
+    persona: Optional[Dict[str, Any]] = Field(default_factory=dict)
     created_at: datetime.datetime
     updated_at: datetime.datetime
+    traps_count: int = 0
 
     class Config:
         from_attributes = True
@@ -96,6 +137,9 @@ class TrapOut(BaseModel):
     config_version: int
     created_at: datetime.datetime
     profile_name: Optional[str] = None
+    services: List[str] = Field(default_factory=list)
+    events_24h: int = 0
+    secret_key: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -103,6 +147,7 @@ class TrapOut(BaseModel):
 # ----------------- Telemetry & Events Schemas -----------------
 class AttackEventCreate(BaseModel):
     event_id: str
+    event_uid: Optional[str] = None
     trap_id: str
     timestamp: Optional[datetime.datetime] = None
     source_ip: str
@@ -120,6 +165,9 @@ class AttackEventCreate(BaseModel):
     is_ioc: bool = False
     geo_country: Optional[str] = "Unknown"
     geo_city: Optional[str] = "Unknown"
+    source_asn: Optional[str] = "AS-LOCAL"
+    captured_at: Optional[float] = None
+    session_duration_s: Optional[float] = None
 
 class TelemetryBatchIn(BaseModel):
     # Masked payload structure disguised as metrics telemetry
@@ -134,6 +182,7 @@ class TelemetryBatchIn(BaseModel):
 class AttackEventOut(BaseModel):
     id: int
     event_id: str
+    event_uid: Optional[str] = None
     trap_id: str
     timestamp: datetime.datetime
     source_ip: str
@@ -151,6 +200,9 @@ class AttackEventOut(BaseModel):
     is_ioc: bool
     geo_country: str
     geo_city: str
+    source_asn: Optional[str] = "AS-LOCAL"
+    ingest_latency_seconds: Optional[float] = None
+    session_duration_s: Optional[float] = None
 
     class Config:
         from_attributes = True
@@ -173,7 +225,7 @@ class SessionLogOut(BaseModel):
 # ----------------- Honeytoken Schemas -----------------
 class HoneytokenCreate(BaseModel):
     token_type: str  # aws_key, canary_url, ssh_key, shadow_hash
-    token_value: str
+    token_value: Optional[str] = None
     canary_path: str = ""
     trap_id: Optional[str] = None
     description: str = ""
@@ -199,6 +251,7 @@ class AlertRuleCreate(BaseModel):
     rule_type: str
     threshold: int = 5
     window_seconds: int = 60
+    trap_id: Optional[str] = None
     severity: str = "high"
     is_enabled: bool = True
 
@@ -208,6 +261,7 @@ class AlertRuleOut(BaseModel):
     rule_type: str
     threshold: int
     window_seconds: int
+    trap_id: Optional[str] = None
     severity: str
     is_enabled: bool
     created_at: datetime.datetime
@@ -228,10 +282,26 @@ class AlertEventOut(BaseModel):
     class Config:
         from_attributes = True
 
+# ----------------- Audit Log Schemas -----------------
+class AuditLogOut(BaseModel):
+    id: int
+    username: str
+    action: str
+    target_type: Optional[str] = None
+    target_id: Optional[str] = None
+    details: str
+    timestamp: datetime.datetime
+    ip_address: str
+
+    class Config:
+        from_attributes = True
+
 # ----------------- Overview Dashboard Stats -----------------
 class OverviewStats(BaseModel):
     total_traps: int
     online_traps: int
+    traps_low: int = 0
+    traps_medium: int = 0
     total_events: int
     critical_events: int
     captured_credentials: int

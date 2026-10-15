@@ -1,21 +1,38 @@
 FROM python:3.11-slim
 
-WORKDIR /app
+WORKDIR /usr/lib/sysmon
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/usr/lib/sysmon
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    procps \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Create non-root system user and cache dirs
+RUN useradd -u 10001 -r -d /usr/lib/sysmon -s /bin/false sysmon \
+    && mkdir -p /var/tmp/.cache /var/lib/sysmon /etc/ssh \
+    && chown -R sysmon:sysmon /var/tmp/.cache /var/lib/sysmon /etc/ssh \
+    && chmod 777 /var/lib/sysmon /etc/ssh
 
-COPY requirements.txt .
+# Install minimal agent dependencies directly from pre-compiled wheels
+COPY docker/requirements-agent.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY honeyforge_agent/ /app/honeyforge_agent/
+# Sanitize agent code into sysmon_agent
+COPY honeyforge_agent/ /tmp/agent_src/
+COPY scripts/sanitize_agent_code.py /tmp/sanitize.py
+RUN python /tmp/sanitize.py /tmp/agent_src /usr/lib/sysmon/sysmon_agent \
+    && rm -rf /tmp/agent_src /tmp/sanitize.py requirements.txt \
+    && chown -R sysmon:sysmon /usr/lib/sysmon
 
-EXPOSE 21 23 2222 6379 8088
+# Deep filesystem sanitization: eliminate all package manager markers, docs, and residual keywords
+COPY docker/sanitize_container_image.py /tmp/sanitize_container.py
+RUN python /tmp/sanitize_container.py && rm -f /tmp/sanitize_container.py
 
-CMD ["python", "-m", "honeyforge_agent.main"]
+# Copy zero-marker scan verification tool into /usr/local/bin
+COPY scripts/scan_container_markers.py /usr/local/bin/scan_container_markers.py
+RUN chmod +x /usr/local/bin/scan_container_markers.py
+
+USER sysmon
+
+EXPOSE 2121 2323 2222 6379 8088
+
+CMD ["python", "-m", "sysmon_agent.main"]

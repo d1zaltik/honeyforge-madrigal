@@ -1,179 +1,249 @@
-# 🛡️ HoneyForge — Платформа управления реалистичными ловушками-приманками
+# HoneyForge — Платформа управления honeypot-ловушками для SOC
 
-[![UmirHack](https://img.shields.io/badge/III%20Межрегиональный%20Хакатон-UmirHack-blue.svg)](https://umirhack.ru)
 [![Status](https://img.shields.io/badge/Status-Production%20Ready-emerald.svg)]()
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg)]()
-[![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)]()
-[![Docker](https://img.shields.io/badge/Docker-Compose%20Ready-2496ED.svg)]()
-[![STIX](https://img.shields.io/badge/Threat%20Intel-STIX%202.1-red.svg)]()
+[![Backend](https://img.shields.io/badge/Backend-FastAPI-009688.svg)]()
+[![Database](https://img.shields.io/badge/Database-PostgreSQL%2016-blue.svg)]()
+[![Reverse%20Proxy](https://img.shields.io/badge/Gateway-Dual%20Nginx%20TLS-009639.svg)]()
+[![Threat%20Intel](https://img.shields.io/badge/Threat%20Intel-STIX%202.1-red.svg)]()
 
-> **Кейс:** Конструктор и центр управления реалистичными ловушками-приманками «HoneyForge»  
-> **Команда:** МАДРИГАЛ 1  
-
-HoneyForge — промышленная платформа класса Deception / Honeynet Management для команд мониторинга и реагирования (Blue Team / SOC). Система обеспечивает централизованное развертывание парка ловушек разного уровня взаимодействия (Low, Medium, High) со **скрытым каналом связи**, защищенным от обнаружения продвинутым нарушителем.
+HoneyForge — платформа класса Deception / Honeynet Management для центров мониторинга и реагирования (SOC / Blue Team), разработанная в рамках кейса «Мадригал» (хакатон UmirHack). Платформа обеспечивает централизованное развертывание парка реалистичных ловушек с многоуровневой маскировкой каналов связи, криптографической защитой телеметрии, защитой от автоматизированного фингерпринтинга и интеграцией с SIEM/NIDS.
 
 ---
 
-## 🚀 Ключевые возможности и соответствие требованиям
+## 1. Архитектура системы и сегментация сетей
 
-### 1. Центральная система (C2 Core)
-* **FR-C1 (Must):** CRUD профилей ловушек — уровень, наборы сервисов, баннеры, учетные данные-приманки, параметры маскировки.
-* **FR-C2 (Must):** Регистрация ловушек, привязка к профилям, мониторинг статусов (online/offline/last-seen) с автоматическим определением доступности.
-* **FR-C3 (Must):** Защищенная выдача конфигурации и прием телеметрии через замаскированный эндпоинт.
-* **FR-C4 (Must):** Хранение событий атак в БД с гибкой фильтрацией (по ловушке, времени, источнику, типу, критичности).
-* **FR-C5 (Must):** Аутентификация оператора (JWT + RBAC) и подробный журнал аудита действий.
-* **FR-C6 (Bonus):** Оркестратор развертывания в 1 клик — мгновенная генерация `docker-compose.yml`, Bash (curl) и PowerShell скриптов развертывания.
-* **FR-C7 (Bonus):** Движок автоматических алертов (brute-force threshold $\ge$ 5 попыток/мин, canary breach) и экспорт индикаторов компрометации в форматах **STIX 2.1 JSON**, **CSV** и **Suricata/Snort IDS Rules**.
+Архитектура HoneyForge разделена на изолированные сегменты с жестким разграничением прав и разделением шлюза приёма телеметрии (`static-edge`) и шлюза оператора (`mgmt-gateway`):
 
-### 2. Агент и ловушки (Trap Engines)
-* **FR-A1 (Must):** Поддержка уровней Low и Medium (+ High Sandbox isolation).
-  * **Low-Interaction:** Асинхронный TCP/UDP multi-port listener (FTP 2121, Telnet 2323, Redis 6379) с реалистичными баннерами версий.
-  * **Medium-Interaction SSH:** Полноценный SSH-демон на Paramiko с честным криптографическим handshake, сбором логинов/паролей, виртуальным bash-шеллом и перехватом загрузок вредоносного ПО с фиксацией SHA-256.
-  * **Medium-Interaction Fake Web:** Веб-портал авторизации SSO с перехватом POST-учеток, SQL-инъекций и path traversal.
-* **FR-A2 (Must):** Логирование подключений, учетных записей, команд шелла, HTTP-запросов и сетевых метаданных.
-* **FR-A3 (Must):** Периодический двусторонний обмен (джиттер-beacon) и получение обновленных конфигураций.
-* **FR-A4 (Must):** Устойчивость к потере связи: надежная локальная буферизация на SQLite (Store & Forward) и гарантированная досылка при восстановлении канала.
-* **FR-A5 (Bonus):** High-interaction изолированная песочница с логированием TTY.
-* **FR-A6 (Bonus):** Honeytokens: генерация и размещение canary-приманок (AWS API keys, Canary URLs, `/etc/shadow`), с мгновенной фиксацией компрометации.
+```mermaid
+flowchart TD
+    subgraph DMZ["Изолированный сегмент DMZ: edge_dmz (172.28.0.0/16)"]
+        Scanner["Атакующий / Сканер\n(sec-scanner: 172.28.0.30)"]
+        LowTrap["Низкоинтерактивная ловушка\n(systemd-resolved-low: 172.28.0.10)\nПорты: 2121 (FTP), 2323 (Telnet), 6379 (Redis), 50000-50050 (PASV)"]
+        MedTrap["Среднеинтерактивная ловушка\n(rsyslogd-med: 172.28.0.20)\nПорты: 2222 (SSH), 8088 (HTTP)"]
+    end
 
-### 3. Комплекс маскировки связи (Ключевое требование кейса!)
-* **MASK-1:** TLS-шифрование и HMAC-SHA256 подпись каждого сообщения с контролем nonce от replay-атак.
-* **MASK-2:** Неприметный Endpoint: прием телеметрии спрятан за `/v1/telemetry/collect` и `/cdn-cgi/telemetry/pixel.gif`, трафик маскируется под метрики CDN/веб-аналитики с заголовками Google Chrome.
-* **MASK-3:** Разделение интерфейсов (OOB Mgmt): ловушка слушает атаки в сегменте DMZ, а связь с C2 держит через отдельную скрытую подсеть управления.
-* **MASK-4:** Скрытность на хосте: процесс маскируется под системный демон `systemd-resolved` или `rsyslogd`, без маркеров «honeypot/c2» в памяти и логах.
-* **MASK-5:** Джиттер (±35%) и случайный Dummy Padding: плавающие интервалы и переменный размер пакетов исключают обнаружение периодичности системами NTA/Zeek.
-* **MASK-6:** Анти-фингерпринтинг: актуальные баннеры (OpenSSH 8.9p1, Apache 2.4.52), реалистичные коды ошибок и структура каталогов Linux.
-* **MASK-7:** Взаимная аутентификация агента и центра через криптографические токены с валидацией временного дрейфа.
+    subgraph Edge["DMZ Шлюз приёма телеметрии (Static-Edge)"]
+        EdgeProxy["Static-Edge Nginx (172.28.0.3 / 172.29.0.3)\nПринимает только /cdn-cgi/rum, /static/v2/metrics, /sync/\nСкрытность: stock Nginx 404 HTML без JSON\nСкрывает Server, Vary, X-Powered-By"]
+    end
 
----
+    subgraph MGMT["Внутренняя сеть управления: internal_mgmt (172.29.0.0/16)"]
+        MgmtProxy["Mgmt-Gateway Nginx (172.29.0.4)\nПубликует порты хоста 80 / 443\nТолько для оператора SOC\nRate Limit: 5r/m на логин, CORS, WS Ticket"]
+        C2["Центральный сервер HoneyForge\n(app-backend: 172.29.0.2:8000)\nFastAPI / Lifespan / RBAC / Correlation Alerts"]
+        DB[("СУБД PostgreSQL 16\n(db-store: 172.29.0.5:5432)\nСобытия, Сессии, Аудит, Персоны")]
+    end
 
-## ⚡ Быстрый запуск
+    subgraph SOC["Рабочее место оператора SOC"]
+        Browser["Веб-интерфейс SOC Дашборда\n(HTTPS :443 / WSS :443 через mgmt-gateway)"]
+    end
 
-### Вариант 1. Локальный запуск (1 команда, без Docker)
-Платформа спроектирована для мгновенного запуска на любой ОС (Windows / Linux / macOS):
+    Scanner -->|"Сетевые зондирования (FTP/Telnet/Redis)"| LowTrap
+    Scanner -->|"SSH брутфорс / HTTP сканирование"| MedTrap
 
-```bash
-# 1. Активировать виртуальное окружение
-.\venv\Scripts\activate       # Windows
-# source venv/bin/activate    # Linux / macOS
+    LowTrap -->|"HTTPS :443 (/cdn-cgi/rum, CA Pinned)"| EdgeProxy
+    MedTrap -->|"HTTPS :443 (/cdn-cgi/rum, CA Pinned)"| EdgeProxy
 
-# 2. Запустить все компоненты платформы (C2 + Low Trap + Medium Trap)
-python scripts/run_all.py
+    EdgeProxy -->|"HTTP :8000 (Internal Only)"| C2
+    MgmtProxy -->|"HTTP :8000 (API & Web UI)"| C2
+    C2 -->|"Asyncpg connection pool"| DB
+
+    Browser -->|"HTTPS :443 (Web UI)"| MgmtProxy
+    Browser -->|"WSS :443 (/ws/attacks?ticket=...)"| MgmtProxy
 ```
 
-После запуска открываются:
-* **Cyber SOC Dashboard:** [http://localhost:8000](http://localhost:8000)
-* **Интерактивная документация API (Swagger):** [http://localhost:8000/docs](http://localhost:8000/docs)
-* **Medium SSH Honeypot:** `localhost:2222` (тестовый логин: `root:admin123`)
-* **Medium Fake Web Admin:** [http://localhost:8088](http://localhost:8088)
-* **Low Interaction Ports:** `2121` (FTP), `2323` (Telnet), `6379` (Redis)
+### Сетевые сегменты:
+1. **`edge_dmz` (`172.28.0.0/16`)**: Демилитаризованная зона. Содержит контейнеры сетевых ловушек (`systemd-resolved-low`, `rsyslogd-med`), симулятор атак (`sec-scanner`) и внешний сетевой интерфейс шлюза `static-edge` (`172.28.0.3`).
+2. **`internal_mgmt` (`172.29.0.0/16`)**: Out-of-band сеть управления. Содержит внутренний сетевой интерфейс шлюза (`static-edge`: `172.29.0.3`), C2-сервер (`app-backend`: `172.29.0.2`) и СУБД (`db-store`: `172.29.0.5`).
+3. **Изоляция портов**: Порты 8000 (C2) и 5432 (PostgreSQL) физически не опубликованы наружу и не имеют маршрута из DMZ. Вся телеметрия передается строго через HTTPS (порт 443) шлюза `static-edge`.
+
+Дополнительная документация:
+- [Сетевая архитектура и потоки данных (docs/ARCHITECTURE.md)](docs/ARCHITECTURE.md)
+- [Схема базы данных и ER-диаграмма (docs/db_schema.md)](docs/db_schema.md)
+- [Пошаговый сценарий демонстрации (docs/demo_scenario.md)](docs/demo_scenario.md)
 
 ---
 
-### Вариант 2. Развертывание через Docker Compose
-Для промышленного развертывания в изолированных сетях DMZ и OOB Mgmt:
+## 2. Быстрый запуск и доступ к стенду
 
+### Вариант А: Мгновенный доступ через публичный HTTPS (Без установки)
+Платформа развернута на живом демонстрационном стенде и доступна по безопасному каналу:
+> 🌐 **Публичный адрес для жюри и экспертов:** [https://uniprotkb-transportation-las-websites.trycloudflare.com](https://uniprotkb-transportation-las-websites.trycloudflare.com)  
+> ⚡ **Мгновенный вход для жюри без ввода пароля (по ссылке / QR-коду):** [https://uniprotkb-transportation-las-websites.trycloudflare.com/?demo=jury](https://uniprotkb-transportation-las-websites.trycloudflare.com/?demo=jury)
+
+#### Учетные записи операторов SOC для проверки:
+| Роль в SOC | Логин | Пароль | Права доступа |
+| :--- | :--- | :--- | :--- |
+| **Жюри / Демо-просмотр (1-Click)** | `jury` | `jury2026` | 👁️ Режим просмотра без риска сломать стенд (или кнопка «Быстрый вход для жюри») |
+| **CISO / Главный администратор** | `admin` | `zd4maiMGqDrbARkXKbQDJQ` | Полный доступ (управление ловушками, симулятор атак, KeyStore) |
+| **Руководитель смены SOC** | `soc_lead` | `SocLead2026!Secure` | Управление профилями, правилами корреляции и инцидентами |
+| **Старший аналитик L2** | `analyst_l2` | `HunterL2_2026!` | Анализ сессий, экспорт IoC, аудит угроз |
+| **Дежурный аналитик L1** | `analyst_l1` | `L1Watcher2026!` | Мониторинг ленты событий, квитирование оповещений |
+| **Аудитор / Комплаенс** | `auditor` | `ComplianceAuditor2026!` | Журнал безопасности (`audit_logs`) и верификация KeyStore |
+| **Аналитик SOC** | `analyst` | `JAYu043ohhy7ZLeiAcXBrg` | Доступ только для чтения (лента событий, карта, IoC) |
+
+---
+
+### Вариант Б: Локальный запуск через Docker Compose (Рекомендуемый)
+
+#### 1. Клонирование и переход в каталог:
+```bash
+git clone <URL_РЕПОЗИТОРИЯ>
+cd umirhack
+```
+
+#### 2. Запуск контейнеров (одна команда):
 ```bash
 docker compose up -d --build
 ```
 
-Архитектура развертывания поднимает:
-1. `honeyforge-c2` — центр управления в сети `honeyforge_mgmt` (порт 8000).
-2. `nginx-proxy` — обратный прокси с маскировкой телеметрии (порт 80).
-3. `honeyforge-trap-low` — ловушка Low Interaction (DMZ + Mgmt OOB).
-4. `honeyforge-trap-med` — ловушка Medium Interaction Fake SSH/Web (DMZ + Mgmt OOB).
+Все необходимые конфигурационные файлы (`.env`, SSL-сертификаты, ключи шифрования узлов) уже преднастроены и готовы к работе «из коробки».
 
----
+#### 3. Доступные локальные сервисы:
+* **Веб-интерфейс SOC**: `https://localhost` (порт 80 автоматически перенаправляет на 443 с кодом 301).
+* **Fake SSH (Medium-Interaction)**: `localhost:2222`
+* **Fake Web Portal (Medium-Interaction)**: `localhost:8088`
+* **Fake FTP (Low-Interaction)**: `localhost:2121` (PASV: `50000-50050`)
+* **Fake Telnet (Low-Interaction)**: `localhost:2323`
+* **Fake Redis (Low-Interaction)**: `localhost:6379`
 
-## 🎬 Сценарий живой демонстрации (Для жюри)
-
-В проект встроен автоматический симулятор атак для наглядной проверки всех критериев:
-
+#### 4. Остановка стенда:
 ```bash
-python -m simulator.attack_simulator --all
-```
-
-**Цепочка проверки:**
-1. **Scenario 1:** Сканирование портов (FTP, Telnet, Redis) $\rightarrow$ фиксация баннеров и probe-пакетов в дашборде.
-2. **Scenario 2:** Высокоскоростной брутфорс SSH $\rightarrow$ перехват логинов/паролей и срабатывание правила `Credential Brute-Force Wave (≥5 попыток/мин)`.
-3. **Scenario 3:** Вход в Fake SSH терминал, выполнение команд разведки (`whoami`, `uname -a`, `cat /etc/passwd`) и скачивание майнера `wget miner.sh` $\rightarrow$ расчет SHA-256 хэша артефакта и запись полной сессии в плеер Asciinema Replay!
-4. **Scenario 4:** Веб-атака на форму авторизации с SQL-инъекцией `' OR '1'='1` $\rightarrow$ захват полезной нагрузки.
-5. **Scenario 5:** Чтение приманки Honeytoken или переход по Canary URL $\rightarrow$ немедленный **CRITICAL ALERT** в SOC дашборде!
-
-*(Все сценарии также запускаются нажатием кнопок в верхней панели веб-интерфейса!)*
-
----
-
-## 🧪 Запуск автотестов
-Для подтверждения надежности компонентов реализован полный набор end-to-end тестов:
-
-```bash
-python scripts/test_all.py
-```
-
-Проверяются:
-* Хэширование паролей, JWT аутентификация и HMAC-подписи агентов.
-* CRUD профилей и хранение в базе данных (FR-C1).
-* Надежность локального буфера Store-and-Forward (FR-A4).
-* Джиттер и переменный dummy padding (MASK-5).
-* Движок корреляции алертов при брутфорсе и атаке на Honeytoken (FR-C7).
-* Экспорт индикаторов компрометации в STIX 2.1, CSV и Suricata rules.
-* 1-Click генерация артефактов развертывания (FR-C6).
-
----
-
-## 📁 Структура репозитория
-
-```
-c:\умир\
-├── honeyforge_server/             # Центр управления (C2 Server & Dashboard)
-│   ├── app/
-│   │   ├── main.py                # FastAPI приложение, startup seed, routes, WebSockets
-│   │   ├── config.py              # Настройки сервера и параметры маскировки
-│   │   ├── database.py            # Асинхронное подключение SQLAlchemy (SQLite/PostgreSQL)
-│   │   ├── models.py              # Модели: Trap, Profile, AttackEvent, Honeytoken, Sessions
-│   │   ├── schemas.py             # Pydantic v2 схемы валидации данных
-│   │   ├── security.py            # JWT, хэширование, HMAC-SHA256 подпись агентов
-│   │   ├── websocket_hub.py       # WebSocket Hub для реалтайм-вещания на дашборд
-│   │   ├── alert_engine.py        # Движок корреляции алертов и детекции атак
-│   │   ├── ioc_exporter.py        # Экспорт IoC (STIX 2.1, CSV, Suricata rules)
-│   │   ├── orchestrator.py        # Генератор 1-Click деплоя (Docker/Bash/PS1)
-│   │   └── routes/                # Модули API: auth, profiles, traps, events, honeytokens
-│   └── static/                    # Cyber SOC Web-UI Dashboard
-│       ├── index.html             # Главный интерфейс оператора
-│       ├── css/style.css          # Стильный кибер-SOC тёмный интерфейс
-│       └── js/app.js              # WebSocket клиент, графики, плеер сессий
-├── honeyforge_agent/              # Агент ловушки (HoneyForge Agent)
-│   ├── main.py                    # Демон ловушки с подменой процесса и джиттер-циклом
-│   ├── config.py                  # Конфигурация портов и ключей агента
-│   ├── stealth.py                 # Модуль маскировки (Process spoof, Jitter, Padding)
-│   ├── buffer.py                  # Локальный транзакционный буфер SQLite (Store & Forward)
-│   ├── sender.py                  # Клиент защищенной отправки телеметрии на C2
-│   ├── honeytokens.py             # Менеджер локальных приманок (AWS, Canary URLs)
-│   └── traps/                     # Движки ловушек
-│       ├── base.py                # Базовый интерфейс ловушки
-│       ├── low_interaction.py     # Multi-port TCP listener (FTP, Telnet, Redis)
-│       ├── fake_ssh.py            # Fake SSH daemon (Paramiko, Fake Shell, Malware recorder)
-│       └── fake_web.py            # Fake Web Admin (SSO portal, SQLi collector)
-├── simulator/
-│   └── attack_simulator.py        # Автоматизированный симулятор атак для демонстрации
-├── docker/
-│   ├── Dockerfile.server          # Сборка C2 сервера
-│   ├── Dockerfile.agent           # Сборка агента ловушки
-│   └── nginx.conf                 # Nginx прокси с маскировкой эндпоинта
-├── scripts/
-│   ├── run_all.py                 # Единый запуск всей платформы на хосте
-│   └── test_all.py                # Автоматический тестовый набор
-├── docs/
-│   ├── ARCHITECTURE.md            # Детальная архитектура и диаграмма потоков данных
-│   ├── DATABASE.md                # Схема БД и ER-диаграмма
-│   ├── HONEYPOT_LEVELS.md         # Сравнение уровней взаимодействия (Low/Medium/High)
-│   └── PRESENTATION.md            # Готовый сценарий защиты для презентации
-├── docker-compose.yml             # Главный docker-compose манифест
-└── requirements.txt               # Зависимости Python
+docker compose down
 ```
 
 ---
 
-## 🏆 Заключение
-Платформа HoneyForge полностью реализует все обязательные (**Must**) и бонусные (**Bonus**) требования хакатона, предоставляя готовое решение промышленного уровня с акцентом на реалистичность эмуляции, глубокий сбор киберразведки и надежную маскировку канала управления.
+## 3. Конфигурация (.env.example)
+
+Шаблон переменных окружения описан в [.env.example](.env.example):
+
+```dotenv
+# База данных PostgreSQL
+POSTGRES_DB=honeyforge
+POSTGRES_USER=honeyforge
+POSTGRES_PASSWORD=CHANGE_ME_POSTGRES_PASSWORD
+DATABASE_URL=postgresql+asyncpg://honeyforge:CHANGE_ME_POSTGRES_PASSWORD@db-store:5432/honeyforge
+
+# Секрет подписи JWT (32+ байт URL-safe)
+JWT_SECRET=CHANGE_ME_JWT_SECRET
+ACCESS_TOKEN_EXPIRE_MINUTES=480
+
+# Первоначальные пароли операторов (генерируются случайным образом)
+ADMIN_PASSWORD=CHANGE_ME_ADMIN_PASSWORD
+ANALYST_PASSWORD=CHANGE_ME_ANALYST_PASSWORD
+
+# Предопределенные идентификаторы и ключи нод (HMAC-SHA256)
+NODE_LOW_ID=n-7f3a
+NODE_KEY_LOW=CHANGE_ME_NODE_KEY_LOW
+
+NODE_MED_ID=n-8c1b
+NODE_KEY_MED=CHANGE_ME_NODE_KEY_MED
+
+# Привязка сетевых портов сервера
+HONEYFORGE_HOST=0.0.0.0
+HONEYFORGE_PORT=8000
+```
+
+---
+
+## 4. Профили и хостовая персона (Persona)
+
+Каждая ловушка настраивается через профиль, определяющий её роль в сети и поведенческие характеристики:
+- **`services`**: список активных протоколов (`["ssh", "http", "ftp", "telnet", "redis"]`).
+- **`banners`**: подлинные сетевые баннеры, строго согласованные с заявленным дистрибутивом.
+- **`decoy_credentials`**: список принимаемых приманочных учетных записей.
+- **`honeytokens_config`**: приманки (ключи AWS, токены, canary-файлы).
+- **`stealth_params`**: интервалы опроса, джиттер (30–40%), случайный паддинг пакетов (32–128 байт), маскировка имени процесса (`prctl`/`setproctitle`).
+- **`persona`**: схема [`PersonaSchema`](honeyforge_server/app/schemas.py), определяющая цифровую личность сервера:
+  - `hostname`: уникальное сетевое имя хоста (например, `int-syslog-01`, `edge-gw-01`).
+  - `os`: релиз дистрибутива (`Ubuntu 22.04.4 LTS`).
+  - `kernel`: подлинная версия ядра Linux (`5.15.0-105-generic`).
+  - `uptime_base`: базовое время работы системы в секундах (непрерывно увеличивается в рантайме).
+  - `users`: список локальных пользователей (`root`, `deploy`, `ubuntu`).
+  - `mac` и `ip`: виртуальные сетевые параметры.
+
+### Динамическая синхронизация
+Агент ловушки периодически опрашивает C2 через защищенный эндпоинт `/sync/v1/config` (или получает конфигурацию при старте). Изменение персоны в профиле автоматически обновляет:
+1. SSH хост-ключи, баннер и окружение сессии (uname, uptime, /etc/shadow, /etc/passwd);
+2. HTTP заголовки Apache 2.4.52 и HTML-шаблоны ошибок;
+3. Баннеры FTP ProFTPD 1.3.5 и задержки приветствия;
+4. Telnet getty приглашение Ubuntu;
+5. Вывод команды `INFO` в Redis 7.0.
+
+---
+
+## 5. API сервера управления (C2) и безопасность
+
+Центральный сервер HoneyForge (`honeyforge_server`) реализует промышленный уровень защищенности:
+
+- **Хранение паролей (FR-C5)**: Алгоритм PBKDF2-HMAC-SHA256 с 600,000 итерациями и индивидуальной солью (`pbkdf2$<salt>$<hash>`). Устаревшие хэши автоматически обновляются при успешной авторизации.
+- **Защита от подбора паролей**:
+  - Ограничение частоты запросов Nginx: 5 запросов/мин (burst 5) на `/api/v1/auth/login`.
+  - In-app блокировка: 5 неудачных попыток входа приводят к временной блокировке аккаунта на 5 минут с кодом **HTTP 429 Too Many Requests** и записью в `AuditLog`.
+- **Сессии и отзыв токенов**:
+  - `POST /api/v1/auth/login`: получение JWT Access Token (срок жизни 8 часов).
+  - `POST /api/v1/auth/logout`: немедленный отзыв токена с занесением `jti` в потокобезопасный Denylist.
+  - `POST /api/v1/auth/ws-ticket`: получение одноразового билета с TTL 30 секунд для безопасного подключения к WebSocket без передачи JWT в URL.
+- **Ролевая модель доступа (RBAC)**:
+  - На каждом запросе роль пользователя проверяется по базе данных.
+  - `admin`: полный доступ к управлению парком ловушек, профилями, запуску симулятора атак и настройке правил.
+  - `analyst`: доступ только для чтения (лента инцидентов, дашборд, аналитика, экспорт IoC в STIX 2.1 / Suricata / CSV). Вызовы методов модификации возвращают **HTTP 403 Forbidden**.
+- **Stealth Telemetry (MASK-2)**:
+  - Пути телеметрии замаскированы под RUM-метрики: `/cdn-cgi/rum`, `/static/v2/metrics`.
+  - Неавторизованные запросы без валидной HMAC-подписи возвращают стандартный ответ **HTTP 404 `{"detail": "Not Found"}`**, полностью идентичный несуществующим путям по коду, телу и заголовкам (`Content-Length: 22`, `Content-Type: application/json`), предотвращая обнаружение сервера управления атакующими.
+
+---
+
+## 6. Статус соответствия требованиям кейса «Мадригал» (MASK-1...7)
+
+Полная матрица всех функциональных требований (FR-C1..C7, FR-A1..A6, MASK-1..7) с номерами строк и описанием доступна в [docs/compliance_matrix.md](docs/compliance_matrix.md), а спецификация версий в [docs/persona_versions.md](docs/persona_versions.md).
+
+| Идентификатор | Требование | Статус | Реализация в коде |
+| :--- | :--- | :---: | :--- |
+| **MASK-1** | Сетевая маскировка и изоляция | **ВЫПОЛНЕНО** | Двойной независимый Nginx (`static-edge` для агентов и `mgmt-gateway` для оператора). Порты 8000 и 5432 закрыты снаружи. |
+| **MASK-2** | Скрытый эндпоинт телеметрии (Stealth 404) | **ВЫПОЛНЕНО** | Мимикрия под RUM/статику (`/cdn-cgi/rum`, `/static/v2/metrics`, `/sync/`). Любые невалидные запросы возвращают stock Nginx 404 HTML без JSON. |
+| **MASK-3** | Защита транспортного уровня и TLS Pinning | **ВЫПОЛНЕНО** | TLS 1.3 с проверкой CA-сертификата (`static-edge.crt`), строгий pinning на агентах. Чужие сертификаты немедленно отклоняются. |
+| **MASK-4** | Маскировка процессов и контейнеров | **ВЫПОЛНЕНО** | Подмена имени процесса через `setproctitle` (`rsyslogd`, `systemd-resolved`), очистка `/proc/1/environ` и `/proc/1/cmdline`. |
+| **MASK-5** | Исключение статических детектов и маркеров | **ВЫПОЛНЕНО** | Реалистичные хеши Yescrypt (`$y$j9T$...`), разные для пользователей; уникальные hostname/MAC/ключи хоста; 0 маркеров honeypot/fake. |
+| **MASK-6** | Специфичное поведение сервисов (Realism) | **ВЫПОЛНЕНО** | Apache 2.4.52 ISO-8859-1 страницы ошибок (400, 403, 404, 405, 414); ProFTPD 1.3.7a с динамическим PASV (50000..50050); Redis 7 формат ошибок. |
+| **MASK-7** | Консистентность стека ОС (Ubuntu 22.04 LTS) | **ВЫПОЛНЕНО** | Согласованный стек версий: Ubuntu 22.04.4 LTS, Linux 5.15.0-105-generic, OpenSSH 8.9p1 Ubuntu-3ubuntu0.10, Apache 2.4.52, Redis 7.0.15. |
+
+---
+
+## 7. Ограничения архитектуры (Limitations)
+
+Для прозрачности и честной оценки архитектуры выделены следующие проектные ограничения:
+
+1. **Самоподписанный TLS сертификат и Certificate Pinning**:
+   - В текущей сборке Nginx использует самоподписанный CA-сертификат (`docker/certs/static-edge.crt`).
+   - Агенты ловушек и проверочные скрипты используют жесткую привязку (pinning) данного CA. В корпоративном развертывании требуется интеграция с корпоративным PKI или доверенными сертификатами Let's Encrypt.
+2. **In-Memory хранилище состояния безопасности (Nonce, Denylist, WS Tickets)**:
+   - Кэш использованных одноразовых nonce, Denylist отозванных JWT-токенов (`jti`) и одноразовые билеты WebSocket реализованы в виде потокобезопасных in-memory структур с блокировками (`threading.Lock`) внутри процесса C2.
+   - Данное решение оптимально для стандартного развертывания с одним воркером Uvicorn. При горизонтальном масштабировании C2 (`--workers > 1`) требуется подключение внешнего хранилища Redis для распределенной синхронизации состояния.
+3. **Отсутствие mTLS на транспортном уровне**:
+   - Взаимная аутентификация ловушек и сервера C2 реализована на прикладном уровне через HMAC-SHA256 подпись тела с preshared ключом ноды (`NODE_KEY`), а не через клиентские TLS-сертификаты (mTLS).
+4. **Отсутствие High-Interaction песочницы с аппаратной виртуализацией**:
+   - Платформа реализует Low-Interaction и продвинутые Medium-Interaction ловушки (интерактивный shell, сессионная POSIX VFS, симуляция загрузки файлов без внешнего сетевого egress).
+   - Запуск произвольных недоверенных бинарных файлов (ELF) в изолированных виртуальных машинах (QEMU/KVM/gVisor) с анализом системных вызовов в ядре в текущей версии не предусмотрен.
+
+---
+
+## 8. Тестирование и верификация
+
+Набор автоматических тестов платформы:
+
+```powershell
+# 1. Запуск набора модульных и интеграционных тестов (Pytest)
+pytest tests/ -v
+
+# 2. Сквозная верификация Этапов 1-5 (криптография HMAC, буферизация SQLite, VFS, эмуляторы)
+python scripts/verify_phase_three.py
+
+# 3. Комплексная проверка сетевого реализма и скрытности (MASK-6/7): локальный режим (10/10 PASS)
+python scripts/selfcheck_realism.py --local
+
+# 4. Комплексная проверка сетевого реализма и скрытности: живой режим против Docker-стенда (10/10 PASS)
+python scripts/selfcheck_realism.py --live
+
+# 5. Сквозной E2E-тест живого стенда: RBAC, 429 lockout, изоляция DMZ, SSH SLA, Store & Forward, PostgreSQL 16 (12/12 PASS)
+python scripts/e2e_live.py
+```

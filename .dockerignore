@@ -9,3 +9,10 @@ __pycache__/
 .git/
 .gitignore
 *.log
+docs/
+scratch/
+tests/
+scripts/*
+!scripts/sanitize_agent_code.py
+!scripts/scan_container_markers.py
+

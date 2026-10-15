@@ -13,6 +13,12 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+DEFAULT_DECOY_CREDENTIALS = [
+    {"user": "root", "pass": "admin123"},
+    {"user": "admin", "pass": "password"},
+    {"user": "deploy", "pass": "deploy2026"}
+]
+
 class Profile(Base):
     __tablename__ = "profiles"
     
@@ -39,6 +45,10 @@ class Profile(Base):
     # Stealth parameters (MASK requirements):
     # {"beacon_interval_s": 10, "jitter_pct": 35, "dummy_padding": True, "proc_masquerade": "systemd-resolved", "disguise_headers": True}
     stealth_params = Column(JSON, default=dict)
+    
+    # Host persona for trap realism (MASK-6):
+    # {"hostname": "prod-srv-01", "os": "Ubuntu 22.04.4 LTS", "kernel": "5.15.0-105-generic", "uptime_base": 172800, "users": ["root", "deploy", "ubuntu"]}
+    persona = Column(JSON, default=dict)
     
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
@@ -83,6 +93,7 @@ class AttackEvent(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     event_id = Column(String(64), unique=True, index=True, nullable=False)
+    event_uid = Column(String(64), unique=True, index=True, nullable=True)  # Deduplication identifier (FR-A4)
     trap_id = Column(String(64), ForeignKey("traps.trap_id"), index=True, nullable=False)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow, index=True)
     
@@ -108,6 +119,9 @@ class AttackEvent(Base):
     is_ioc = Column(Boolean, default=False)
     geo_country = Column(String(64), default="Unknown")
     geo_city = Column(String(64), default="Unknown")
+    source_asn = Column(String(64), default="AS-LOCAL")
+    ingest_latency_seconds = Column(Float, nullable=True)
+    session_duration_s = Column(Float, nullable=True)
     
     trap = relationship("Trap", back_populates="events")
 
@@ -154,6 +168,7 @@ class AlertRule(Base):
     rule_type = Column(String(64), nullable=False)  # brute_force, honeytoken, high_severity, file_download
     threshold = Column(Integer, default=5)          # e.g. 5 attempts
     window_seconds = Column(Integer, default=60)    # within 60 seconds
+    trap_id = Column(String(64), nullable=True)     # specific trap or None for all
     severity = Column(String(32), default="high")
     is_enabled = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)

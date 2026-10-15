@@ -1,135 +1,272 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HoneyForge — Cyber SOC Honeypot C2 Platform</title>
+    <title>HoneyForge — Центр управления ловушками</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/strings.js"></script>
 </head>
 <body>
 
-    <!-- Header & Navigation -->
+    <!-- Экран входа оператора -->
+    <div id="login-screen">
+        <div class="login-card">
+            <div class="login-brand">
+                <div class="brand-icon" style="margin: 0 auto 12px; width:44px; height:44px; font-size:18px;">HF</div>
+                <h2 style="color:var(--accent); font-size:18px;">HoneyForge</h2>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Центр управления ловушками</div>
+            </div>
+            <form onsubmit="handleLoginSubmit(event)">
+                <div class="form-group">
+                    <label class="form-label">Имя пользователя</label>
+                    <input type="text" id="login-username" class="form-input" placeholder="Введите имя пользователя" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Пароль</label>
+                    <input type="password" id="login-password" class="form-input" placeholder="Введите пароль оператора" required autocomplete="current-password">
+                </div>
+                <div style="margin-top:20px; display:flex; flex-direction:column; gap:10px;">
+                    <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Войти в систему</button>
+                    <button type="button" class="btn btn-contour" style="width:100%; justify-content:center; border-color:var(--accent-2); color:var(--accent-2); background:rgba(56,189,248,0.06);" onclick="quickLoginJury()">
+                        <span>👁️ Быстрый вход для жюри (Демо-просмотр)</span>
+                    </button>
+                </div>
+                <div id="login-error" style="color:var(--sev-critical); font-size:12px; margin-top:10px; text-align:center; display:none;"></div>
+                <div class="login-hint">
+                    <strong>Доступ для жюри и экспертов:</strong> логин <code style="color:var(--accent-2);">jury</code>, пароль <code style="color:var(--accent-2);">jury2026</code> или кнопка быстрого входа выше.<br>
+                    Режим просмотра: доступ ко всей телеметрии, сессиям и IoC без возможности изменения настроек.
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Шапка системы -->
     <header>
         <div class="brand">
             <div class="brand-icon">HF</div>
             <div class="brand-text">
-                <h1>HONEYFORGE C2</h1>
-                <span>Stealth Honeypot Deception Platform</span>
+                <h1>HoneyForge</h1>
+                <span>Центр управления ловушками</span>
             </div>
         </div>
 
-        <nav class="nav-tabs">
-            <button class="nav-btn active" onclick="switchTab('tab-live')">Live SOC Stream</button>
-            <button class="nav-btn" onclick="switchTab('tab-traps')">Fleet Traps</button>
-            <button class="nav-btn" onclick="switchTab('tab-profiles')">Profile Constructor</button>
-            <button class="nav-btn" onclick="switchTab('tab-sessions')">Session Replay</button>
-            <button class="nav-btn" onclick="switchTab('tab-honeytokens')">Honeytokens Hub</button>
-            <button class="nav-btn" onclick="switchTab('tab-threatintel')">IoC & Threat Intel</button>
+        <nav class="nav-tabs" id="nav-tabs-bar">
+            <button class="nav-btn active" data-tab="tab-live" onclick="switchTab('tab-live')">
+                <span id="icon-tab-live"></span>
+                <span>Лента событий</span>
+            </button>
+            <button class="nav-btn" data-tab="tab-traps" onclick="switchTab('tab-traps')">
+                <span id="icon-tab-traps"></span>
+                <span>Парк ловушек</span>
+            </button>
+            <button class="nav-btn" data-tab="tab-profiles" onclick="switchTab('tab-profiles')">
+                <span id="icon-tab-profiles"></span>
+                <span>Профили</span>
+            </button>
+            <button class="nav-btn" data-tab="tab-sessions" onclick="switchTab('tab-sessions')">
+                <span id="icon-tab-sessions"></span>
+                <span>Сессии</span>
+            </button>
+            <button class="nav-btn" data-tab="tab-honeytokens" onclick="switchTab('tab-honeytokens')">
+                <span id="icon-tab-honeytokens"></span>
+                <span>Honeytokens</span>
+            </button>
+            <button class="nav-btn" data-tab="tab-alerts-ioc" onclick="switchTab('tab-alerts-ioc')">
+                <span id="icon-tab-alerts"></span>
+                <span>Оповещения и IoC</span>
+            </button>
+            <button class="nav-btn" data-tab="tab-audit" onclick="switchTab('tab-audit')">
+                <span id="icon-tab-audit"></span>
+                <span>Журнал аудита</span>
+            </button>
+            <button class="nav-btn" data-tab="tab-users-keystore" onclick="switchTab('tab-users-keystore')">
+                <span id="icon-tab-users"></span>
+                <span>Пользователи и KeyStore</span>
+            </button>
         </nav>
 
         <div class="header-status">
-            <div class="live-badge" id="ws-badge">
-                <span class="pulse-dot"></span>
-                <span id="ws-status-text">C2 Realtime Linked</span>
+            <div class="channel-indicator" id="ws-indicator">
+                <span class="channel-dot" id="ws-dot"></span>
+                <span id="ws-status-text">Канал событий: подключено</span>
             </div>
-            <button class="btn btn-secondary" onclick="exportIoC('stix')">Export STIX 2.1</button>
+            <div class="operator-badge" id="operator-info">
+                <span>Оператор: <strong id="op-username">admin</strong></span>
+                <span class="role-pill" id="op-role">Администратор</span>
+            </div>
+            <button class="btn btn-contour" style="padding:4px 10px; font-size:12px;" onclick="handleLogout()">Выйти</button>
         </div>
     </header>
 
     <div class="container">
-        
-        <!-- Top Metrics Cards -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-title">Active Traps</div>
-                <div class="stat-value"><span id="metric-online-traps">0</span> / <span id="metric-total-traps" style="font-size: 16px; color: var(--text-muted);">0</span></div>
-                <div class="stat-sub">DMZ & Internal Traps</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-title">Interceptions</div>
-                <div class="stat-value" id="metric-total-events" style="color: var(--cyan);">0</div>
-                <div class="stat-sub">Scans, Auth & Probes</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-title">Critical Threats</div>
-                <div class="stat-value" id="metric-critical-events" style="color: var(--red);">0</div>
-                <div class="stat-sub">Malware & Shell Injections</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-title">Captured Credentials</div>
-                <div class="stat-value" id="metric-credentials" style="color: var(--amber);">0</div>
-                <div class="stat-sub">Brute-force harvested pairs</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-title">Canary Honeytokens</div>
-                <div class="stat-value"><span id="metric-ht-triggered" style="color: var(--purple);">0</span> / <span id="metric-ht-total" style="font-size: 16px; color: var(--text-muted);">0</span></div>
-                <div class="stat-sub">Armed Decoy Traps</div>
-            </div>
-        </div>
 
-        <!-- Live Demo Attack Simulator Control Bar -->
-        <div class="control-bar">
-            <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size: 12px; font-weight: 700; color: var(--cyan); text-transform: uppercase;">
-                    ⚡ Live Attack Simulator (Jury Demo):
-                </span>
-                <span style="font-size: 12px; color: var(--text-muted);">
-                    Test live honeypot reaction with 1 click
-                </span>
-            </div>
-            <div class="sim-buttons">
-                <button class="btn btn-cyan" onclick="runSim('port_scan')">⚡ 1. Port Recon (Low)</button>
-                <button class="btn btn-amber" onclick="runSim('ssh_brute_force')">🔑 2. SSH Brute Force (Medium)</button>
-                <button class="btn btn-primary" onclick="runSim('post_exploitation')">💀 3. Interactive Shell & Malware</button>
-                <button class="btn btn-danger" onclick="runSim('honeytoken_breach')">🚨 4. Honeytoken Breach</button>
-            </div>
-        </div>
-
-        <!-- TAB 1: Live Attack Center -->
+        <!-- ================= ВКЛАДКА 1: ЛЕНТА СОБЫТИЙ ================= -->
         <div id="tab-live" class="tab-pane active">
+
+            <!-- 5 Карточек статистики -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-title">Ловушки онлайн</div>
+                    <div class="stat-value"><span id="metric-online-traps">0</span> / <span id="metric-total-traps" style="font-size:18px; color:var(--text-secondary);">0</span></div>
+                    <div class="stat-sub" id="metric-traps-breakdown">Low: 1 · Medium: 1</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">События за 24 ч</div>
+                    <div class="stat-value" id="metric-total-events">0</div>
+                    <div class="stat-sub">Зафиксированная телеметрия</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Критические события</div>
+                    <div class="stat-value critical" id="metric-critical-events">0</div>
+                    <div class="stat-sub">Вредоносное ПО и атаки</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Перехваченные учётные данные</div>
+                    <div class="stat-value" id="metric-credentials">0</div>
+                    <div class="stat-sub">Пары логин / пароль</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">Honeytokens сработало</div>
+                    <div class="stat-value"><span id="metric-ht-triggered" class="critical">0</span> / <span id="metric-ht-total" style="font-size:18px; color:var(--text-secondary);">0</span></div>
+                    <div class="stat-sub">Скомпрометировано / активно</div>
+                </div>
+            </div>
+
+            <!-- Компактная панель: Контрольная проверка обнаружения -->
+            <div class="control-bar">
+                <div class="control-bar-info">
+                    <div class="control-bar-title">Контрольная проверка обнаружения</div>
+                    <div class="control-bar-sub">Запускает реальную атаку на ловушку и показывает, как быстро событие доходит до центра</div>
+                </div>
+                <div class="sim-buttons" id="sim-buttons-group">
+                    <button class="btn btn-contour" onclick="triggerSimulation('port_scan')" id="btn-sim-1">
+                        <span class="btn-dot" style="background:var(--sev-low);"></span>
+                        <span>1. Сканирование портов (Low)</span>
+                    </button>
+                    <button class="btn btn-contour" onclick="triggerSimulation('ssh_brute_force')" id="btn-sim-2">
+                        <span class="btn-dot" style="background:var(--sev-medium);"></span>
+                        <span>2. Подбор паролей SSH (Medium)</span>
+                    </button>
+                    <button class="btn btn-contour" onclick="triggerSimulation('post_exploitation')" id="btn-sim-3">
+                        <span class="btn-dot" style="background:var(--sev-high);"></span>
+                        <span>3. Интерактивная сессия и загрузка файла (Medium)</span>
+                    </button>
+                    <button class="btn btn-contour" onclick="triggerSimulation('honeytoken_breach')" id="btn-sim-4">
+                        <span class="btn-dot" style="background:var(--sev-critical);"></span>
+                        <span>4. Срабатывание honeytoken (Medium)</span>
+                    </button>
+                    <button class="btn btn-contour" onclick="triggerSimulation('network_disconnect')" id="btn-sim-5">
+                        <span class="btn-dot" style="background:var(--accent-2);"></span>
+                        <span>5. Потеря связи: проверка буфера</span>
+                    </button>
+                </div>
+                <div class="sim-status-line" id="sim-status-display">Готово к запуску проверки</div>
+            </div>
+
+            <!-- Фильтры ленты событий -->
+            <div class="filters-bar">
+                <div class="filter-group">
+                    <span class="filter-label">Ловушка:</span>
+                    <select id="filter-trap" class="filter-select" onchange="applyFilters()">
+                        <option value="">Все ловушки</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Тип:</span>
+                    <select id="filter-type" class="filter-select" onchange="applyFilters()">
+                        <option value="">Все типы</option>
+                        <option value="port_scan">Сканирование порта</option>
+                        <option value="banner_probe">Запрос баннера</option>
+                        <option value="auth_attempt">Попытка входа</option>
+                        <option value="shell_command">Команда</option>
+                        <option value="web_request">HTTP-запрос</option>
+                        <option value="file_download">Загрузка файла</option>
+                        <option value="honeytoken_triggered">Срабатывание honeytoken</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Важность:</span>
+                    <select id="filter-severity" class="filter-select" onchange="applyFilters()">
+                        <option value="">Все уровни</option>
+                        <option value="critical">КРИТИЧЕСКИЙ</option>
+                        <option value="high">ВЫСОКИЙ</option>
+                        <option value="medium">СРЕДНИЙ</option>
+                        <option value="low">НИЗКИЙ</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Источник (IP):</span>
+                    <input type="text" id="filter-ip" class="filter-select" placeholder="IP адрес..." style="width:130px;" oninput="applyFilters()">
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Период:</span>
+                    <select id="filter-period" class="filter-select" onchange="applyFilters()">
+                        <option value="all">Всё время</option>
+                        <option value="15m">15 мин</option>
+                        <option value="1h">1 ч</option>
+                        <option value="24h">24 ч</option>
+                    </select>
+                </div>
+                <div style="margin-left:auto;">
+                    <button class="btn btn-contour" style="padding:4px 10px; font-size:12px;" onclick="resetFilters()">Сбросить фильтры</button>
+                </div>
+            </div>
+
+            <!-- Сетка: Лента событий слева, Аналитика справа -->
             <div class="dashboard-grid">
                 
-                <!-- Left: Live Attack Feed -->
-                <div class="card-panel">
+                <!-- Лента событий -->
+                <div class="panel">
                     <div class="panel-header">
                         <div class="panel-title">
-                            <span style="color: var(--cyan);">●</span> Live Attack Activity Stream
+                            <span>Лента событий в реальном времени</span>
                         </div>
-                        <div style="font-size: 12px; color: var(--text-muted);">
-                            Auto-updating via WebSocket
-                        </div>
+                        <div style="font-size:12px; color:var(--text-muted);" id="feed-count-display">0 событий</div>
                     </div>
-                    <div class="feed-container" id="attack-feed">
-                        <!-- Attack event items rendered here -->
+                    <div class="feed-container" id="feed-container">
+                        <!-- Строки событий формируются динамически -->
                     </div>
                 </div>
 
-                <!-- Right: Active Alerts & Summary Charts -->
+                <!-- Правая колонка: Оповещения, Диаграмма, Топ источников -->
                 <div>
-                    <!-- Active Correlated Alerts -->
-                    <div class="card-panel">
-                        <div class="panel-header">
-                            <div class="panel-title" style="color: var(--red);">
-                                🚨 Correlated SOC Alerts
+                    <!-- 1. Оповещения -->
+                    <div class="panel">
+                        <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center;">
+                            <div class="panel-title" style="color:var(--sev-critical);">
+                                <span>Оповещения</span>
                             </div>
+                            <button class="btn btn-contour" style="padding:2px 8px; font-size:11px;" onclick="ackAllAlerts()" id="btn-ack-all" title="Квитировать все активные инциденты">Принять все</button>
                         </div>
-                        <div style="padding: 12px; max-height: 240px; overflow-y: auto;" id="alerts-list">
-                            <div style="color: var(--text-muted); font-size: 12px; text-align: center; padding: 20px;">
-                                No active critical alert thresholds exceeded.
+                        <div style="padding:10px; max-height:200px; overflow-y:auto;" id="alerts-list">
+                            <div style="color:var(--text-muted); font-size:12px; text-align:center; padding:16px;">
+                                Нет активных оповещений
                             </div>
                         </div>
                     </div>
 
-                    <!-- Top Attacker IPs & Target Ports -->
-                    <div class="card-panel">
+                    <!-- 2. Типы событий (диаграмма) -->
+                    <div class="panel">
                         <div class="panel-header">
-                            <div class="panel-title">
-                                📊 Attack Surface Breakdown
-                            </div>
+                            <div class="panel-title">Типы событий</div>
                         </div>
-                        <div style="padding: 16px;">
-                            <canvas id="attackTypeChart" height="180"></canvas>
+                        <div class="chart-box">
+                            <div style="width:160px; height:160px; position:relative;">
+                                <canvas id="chart-event-types" width="160" height="160"></canvas>
+                            </div>
+                            <div id="chart-legend" style="margin-top:12px; width:100%; font-size:12px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Топ источников -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <div class="panel-title">Топ источников</div>
+                        </div>
+                        <div style="padding:10px;" id="top-attackers-list">
+                            <!-- Топ IP адресов -->
                         </div>
                     </div>
                 </div>
@@ -137,217 +274,753 @@
             </div>
         </div>
 
-        <!-- TAB 2: Fleet Traps Manager -->
+        <!-- ================= ВКЛАДКА 2: ПАРК ЛОВУШЕК ================= -->
         <div id="tab-traps" class="tab-pane">
-            <div class="card-panel">
+            <div class="panel">
                 <div class="panel-header">
-                    <div class="panel-title">
-                        🛡️ Distributed Honeypot Traps Fleet (DMZ & Internal)
-                    </div>
-                    <div>
-                        <button class="btn btn-cyan" onclick="openRegisterTrapModal()">+ Register New Trap</button>
-                    </div>
-                </div>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Trap ID</th>
-                            <th>Name</th>
-                            <th>Profile</th>
-                            <th>Level</th>
-                            <th>DMZ IP</th>
-                            <th>OOB Mgmt IP</th>
-                            <th>Status</th>
-                            <th>Last Seen</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="traps-table-body">
-                        <!-- Traps rows populated here -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- TAB 3: Profile Constructor -->
-        <div id="tab-profiles" class="tab-pane">
-            <div class="card-panel">
-                <div class="panel-header">
-                    <div class="panel-title">
-                        ⚙️ Deception Profiles Constructor (FR-C1)
-                    </div>
-                    <div>
-                        <button class="btn btn-cyan" onclick="openCreateProfileModal()">+ Create New Profile</button>
-                    </div>
+                    <div class="panel-title">Парк ловушек (DMZ)</div>
+                    <button class="btn btn-primary admin-only" onclick="openRegisterTrapModal()">+ Зарегистрировать ловушку</button>
                 </div>
                 <table class="data-table">
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Profile Name</th>
-                            <th>Interaction Level</th>
-                            <th>Emulated Services</th>
-                            <th>Stealth Masquerade</th>
-                            <th>Beacon Jitter</th>
-                            <th>Created</th>
+                            <th>Название</th>
+                            <th>Уровень</th>
+                            <th>Профиль</th>
+                            <th>Сервисы и порты</th>
+                            <th>Адрес в DMZ</th>
+                            <th>Mgmt-адрес</th>
+                            <th>Статус</th>
+                            <th>Последняя связь</th>
+                            <th>События за 24 ч</th>
+                            <th>Действия</th>
                         </tr>
                     </thead>
-                    <tbody id="profiles-table-body">
-                        <!-- Profiles populated here -->
-                    </tbody>
+                    <tbody id="traps-tbody"></tbody>
                 </table>
             </div>
         </div>
 
-        <!-- TAB 4: Session Replay (Asciinema style) -->
+        <!-- ================= ВКЛАДКА 3: ПРОФИЛИ ================= -->
+        <div id="tab-profiles" class="tab-pane">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">Профили ловушек</div>
+                    <button class="btn btn-primary admin-only" onclick="openCreateProfileModal()">+ Создать профиль</button>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Уровень</th>
+                            <th>Сервисы</th>
+                            <th>Привязано ловушек</th>
+                            <th>Дата изменения</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="profiles-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ================= ВКЛАДКА 4: СЕССИИ ================= -->
         <div id="tab-sessions" class="tab-pane">
-            <div class="card-panel">
+            <div class="panel">
                 <div class="panel-header">
-                    <div class="panel-title">
-                        📼 Interactive Shell Session Recordings (Asciinema Style)
-                    </div>
+                    <div class="panel-title">Интерактивные сессии (Medium)</div>
                 </div>
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Session ID</th>
-                            <th>Trap ID</th>
-                            <th>Source Attacker IP</th>
-                            <th>Protocol</th>
-                            <th>Commands Count</th>
-                            <th>Captured Artifacts</th>
-                            <th>Time</th>
-                            <th>Replay</th>
+                            <th>ID сессии</th>
+                            <th>Ловушка</th>
+                            <th>Источник</th>
+                            <th>Протокол</th>
+                            <th>Начало</th>
+                            <th>Длительность</th>
+                            <th>Команд</th>
+                            <th>Файлов</th>
+                            <th>Статус</th>
+                            <th>Действие</th>
                         </tr>
                     </thead>
-                    <tbody id="sessions-table-body">
-                        <!-- Sessions populated here -->
-                    </tbody>
+                    <tbody id="sessions-tbody"></tbody>
                 </table>
             </div>
         </div>
 
-        <!-- TAB 5: Honeytokens Hub -->
+        <!-- ================= ВКЛАДКА 5: HONEYTOKENS ================= -->
         <div id="tab-honeytokens" class="tab-pane">
-            <div class="card-panel">
+            <div class="panel">
                 <div class="panel-header">
-                    <div class="panel-title">
-                        🪤 Honeytokens Decoy Management (FR-A6)
-                    </div>
-                    <div>
-                        <button class="btn btn-cyan" onclick="openCreateHoneytokenModal()">+ Plant Canary Honeytoken</button>
+                    <div class="panel-title">Токены-приманки Honeytokens</div>
+                    <button class="btn btn-primary admin-only" onclick="openCreateHoneytokenModal()">+ Разместить honeytoken</button>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Тип</th>
+                            <th>Где размещён</th>
+                            <th>Значение</th>
+                            <th>Статус</th>
+                            <th>Время срабатывания</th>
+                            <th>IP нарушителя</th>
+                        </tr>
+                    </thead>
+                    <tbody id="honeytokens-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ================= ВКЛАДКА 6: ОПОВЕЩЕНИЯ И IOC ================= -->
+        <div id="tab-alerts-ioc" class="tab-pane">
+            <!-- 1. Правила оповещений -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">Правила оповещений</div>
+                    <button class="btn btn-primary admin-only" onclick="openAddRuleModal()">+ Добавить правило</button>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Условие</th>
+                            <th>Порог N</th>
+                            <th>Окно (с)</th>
+                            <th>Ловушка</th>
+                            <th>Включено</th>
+                            <th>Действие</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rules-tbody"></tbody>
+                </table>
+            </div>
+
+            <!-- 2. Индикаторы компрометации (IoC) -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">Индикаторы компрометации (IoC)</div>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-primary" onclick="downloadIoC('stix')">Скачать STIX 2.1 (JSON)</button>
+                        <button class="btn btn-contour" onclick="downloadIoC('csv')">Скачать CSV</button>
                     </div>
                 </div>
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Token ID</th>
-                            <th>Type</th>
-                            <th>Decoy Target Path / Value</th>
-                            <th>Trap Location</th>
-                            <th>Status</th>
-                            <th>Breach Time</th>
-                            <th>Attacker IP</th>
+                            <th>Тип</th>
+                            <th>Значение</th>
+                            <th>Первое появление</th>
+                            <th>Последнее появление</th>
+                            <th>Число</th>
+                            <th>Ловушка</th>
                         </tr>
                     </thead>
-                    <tbody id="honeytokens-table-body">
-                        <!-- Honeytokens populated here -->
-                    </tbody>
+                    <tbody id="ioc-tbody"></tbody>
+                </table>
+
+                <!-- Сворачиваемый блок с сырым JSON STIX -->
+                <details style="padding:16px; border-top:1px solid var(--border);">
+                    <summary style="font-size:12px; color:var(--text-secondary); cursor:pointer; font-weight:600;">
+                        Сырой пакет STIX 2.1 (JSON)
+                    </summary>
+                    <pre class="code-block" id="ioc-raw-json" style="margin-top:10px;">Загрузка данных STIX...</pre>
+                </details>
+            </div>
+        </div>
+
+        <!-- ================= ВКЛАДКА 7: ЖУРНАЛ АУДИТА ================= -->
+        <div id="tab-audit" class="tab-pane">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">Журнал аудита действий</div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <span class="filter-label">Оператор:</span>
+                        <select id="audit-filter-user" class="filter-select" onchange="loadAuditLogs()">
+                            <option value="">Все</option>
+                            <option value="admin">admin</option>
+                            <option value="analyst">analyst</option>
+                        </select>
+                    </div>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Время</th>
+                            <th>Оператор</th>
+                            <th>Действие</th>
+                            <th>Объект</th>
+                            <th>Результат</th>
+                            <th>IP-адрес</th>
+                        </tr>
+                    </thead>
+                    <tbody id="audit-tbody"></tbody>
                 </table>
             </div>
         </div>
 
-        <!-- TAB 6: Threat Intel & IoC Export -->
-        <div id="tab-threatintel" class="tab-pane">
-            <div class="card-panel">
+        <!-- ================= ВКЛАДКА 8: ПОЛЬЗОВАТЕЛИ И KEYSTORE ================= -->
+        <div id="tab-users-keystore" class="tab-pane">
+            
+            <!-- Панель 1: Операторы SOC и управление доступом -->
+            <div class="panel" style="margin-bottom:20px;">
                 <div class="panel-header">
-                    <div class="panel-title">
-                        📦 Indicators of Compromise (IoC) Export Center (FR-C7)
+                    <div>
+                        <div class="panel-title">Операторы SOC и ролевой доступ (RBAC)</div>
+                        <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">
+                            Управление учетными записями центра мониторинга, разграничение прав и контроль сессий
+                        </div>
                     </div>
-                    <div style="display:flex; gap:8px;">
-                        <button class="btn btn-primary" onclick="exportIoC('stix')">STIX 2.1 JSON</button>
-                        <button class="btn btn-secondary" onclick="exportIoC('csv')">CSV Export</button>
-                        <button class="btn btn-secondary" onclick="exportIoC('suricata')">Suricata IDS Rules</button>
-                    </div>
+                    <button class="btn btn-primary admin-only" onclick="openCreateUserModal()">
+                        + Добавить оператора
+                    </button>
                 </div>
-                <div style="padding: 16px;">
-                    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">
-                        STIX 2.1 Threat Intelligence Bundle Preview:
-                    </div>
-                    <pre class="code-block" id="ioc-preview-block">Loading IoC bundle...</pre>
-                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Пользователь</th>
+                            <th>Роль в SOC</th>
+                            <th>Уровень привилегий</th>
+                            <th>Статус</th>
+                            <th>Зарегистрирован</th>
+                            <th class="admin-only">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-tbody">
+                        <tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:20px;">Загрузка операторов...</td></tr>
+                    </tbody>
+                </table>
             </div>
+
+            <!-- Панель 2: Запороленный криптографический KeyStore платформы -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div>
+                        <div class="panel-title" style="display:flex; align-items:center; gap:8px;">
+                            <span>Криптографический KeyStore платформы (AES-256-GCM)</span>
+                            <span class="role-pill" style="font-size:11px;">E2E Cryptographic Vault</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="keystore-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:20px; padding:20px;">
+                    <!-- Карточка экспорта KeyStore -->
+                    <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:18px; display:flex; flex-direction:column; justify-content:space-between;">
+                        <div>
+                            <div style="font-size:14px; font-weight:600; color:var(--accent); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                                <span id="icon-export-lock"></span>
+                                <span>Экспорт зашифрованного KeyStore</span>
+                            </div>
+                            <div style="font-size:12px; color:var(--text-secondary); margin-bottom:16px;">
+                                Сгенерировать защищенный паролем контейнер (.enc / .hfks), содержащий актуальные ключи всех подключенных ловушек.
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Мастер-пароль шифрования KeyStore</label>
+                                <input type="password" id="keystore-export-pass" class="form-input" placeholder="Введите надежный мастер-пароль" autocomplete="new-password">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Описание архива ключей</label>
+                                <input type="text" id="keystore-export-desc" class="form-input" value="HoneyForge SOC Production KeyStore">
+                            </div>
+                        </div>
+
+                        <div style="margin-top:16px;">
+                            <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="handleExportKeyStore()">
+                                <span>Зашифровать и скачать KeyStore (.enc)</span>
+                            </button>
+                            <div id="export-keystore-status" style="font-size:12px; margin-top:10px; display:none; padding:8px; border-radius:4px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Карточка проверки / расшифровки KeyStore -->
+                    <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:18px; display:flex; flex-direction:column; justify-content:space-between;">
+                        <div>
+                            <div style="font-size:14px; font-weight:600; color:var(--accent-2); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                                <span id="icon-inspect-key"></span>
+                                <span>Проверка и расшифровка KeyStore</span>
+                            </div>
+                            <div style="font-size:12px; color:var(--text-secondary); margin-bottom:16px;">
+                                Загрузите или вставьте пакет KeyStore и введите мастер-пароль для проверки подлинности тега AES-GCM и извлечения секретов.
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Файл зашифрованного хранилища (.enc)</label>
+                                <div style="display:flex; align-items:center; gap:10px; background:var(--surface-1); border:1px solid var(--border); border-radius:6px; padding:8px 12px; margin-bottom:6px;">
+                                    <input type="file" id="keystore-file-input" style="display:none;" onchange="handleKeyStoreFileUpload(event)">
+                                    <button type="button" class="btn btn-contour" style="font-size:12px; padding:4px 10px;" onclick="document.getElementById('keystore-file-input').click()">
+                                        Выбрать файл .enc
+                                    </button>
+                                    <span id="keystore-file-name" style="font-size:12px; color:var(--text-secondary); font-family:var(--font-mono); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Файл не выбран</span>
+                                </div>
+                                <details style="margin-top:4px;">
+                                    <summary style="font-size:11px; color:var(--text-muted); cursor:pointer;">Показать / вставить сырой JSON шифропакета</summary>
+                                    <textarea id="keystore-inspect-json" class="form-input" style="height:65px; font-family:var(--font-mono); font-size:11px; margin-top:4px; resize:vertical;" placeholder="Или вставьте JSON зашифрованного пакета..."></textarea>
+                                </details>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Мастер-пароль для расшифровки</label>
+                                <input type="password" id="keystore-inspect-pass" class="form-input" placeholder="Введите мастер-пароль" autocomplete="current-password">
+                            </div>
+                        </div>
+
+                        <div style="margin-top:16px;">
+                            <button class="btn btn-contour" style="width:100%; justify-content:center; border-color:var(--accent-2); color:var(--accent-2);" onclick="handleInspectKeyStore()">
+                                <span>Расшифровать и проверить тег AES-GCM</span>
+                            </button>
+                            <div id="inspect-keystore-status" style="font-size:12px; margin-top:10px; display:none; padding:8px; border-radius:4px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Блок результатов расшифровки KeyStore -->
+                <div id="keystore-results-panel" style="display:none; padding:0 20px 20px;">
+                    <div style="background:var(--surface-1); border:1px solid var(--border); border-radius:8px; padding:16px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:8px;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span class="status-badge online" id="keystore-verify-badge">AES-GCM Tag Verified</span>
+                                <strong id="keystore-results-title" style="color:var(--accent);">Содержимое KeyStore</strong>
+                            </div>
+                            <div style="font-size:12px; color:var(--text-secondary);" id="keystore-results-meta"></div>
+                        </div>
+                        <table class="data-table" style="margin-top:8px;">
+                            <thead>
+                                <tr>
+                                    <th>ID ловушки</th>
+                                    <th>Название</th>
+                                    <th>Уровень</th>
+                                    <th>IP-адрес</th>
+                                    <th>Секретный HMAC-ключ узла</th>
+                                    <th>Статус</th>
+                                </tr>
+                            </thead>
+                            <tbody id="keystore-nodes-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
         </div>
 
     </div>
 
-    <!-- MODAL: Deploy Artifact Generator -->
-    <div class="modal-overlay" id="modal-deploy">
-        <div class="modal-content">
+    <!-- БОКОВАЯ ПАНЕЛЬ (DRAWER) ДЛЯ ДЕТАЛЕЙ СОБЫТИЯ -->
+    <div class="drawer-overlay" id="event-drawer" onclick="closeDrawer(event)">
+        <div class="drawer" onclick="event.stopPropagation()">
+            <div class="drawer-header">
+                <h3 style="font-size:15px; font-weight:600; color:var(--accent);">Детали события безопасности</h3>
+                <button class="modal-close" onclick="closeDrawer()">&times;</button>
+            </div>
+            <div class="drawer-body" id="drawer-content">
+                <!-- Заполняется динамически -->
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: ДЕТАЛИ СЕССИИ (ОТКРЫТЬ) -->
+    <div class="modal-overlay" id="modal-session">
+        <div class="modal-content" style="width:780px;">
             <div class="modal-header">
-                <h3 id="modal-deploy-title" style="color: var(--cyan);">1-Click Trap Deployment (FR-C6)</h3>
+                <h3 style="font-size:14px; font-weight:600; color:var(--accent);" id="modal-session-title">Детали интерактивной сессии</h3>
+                <button class="modal-close" onclick="closeModal('modal-session')">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-session-body">
+                <!-- Содержимое сессии -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-contour" onclick="closeModal('modal-session')">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: РАЗВЕРТЫВАНИЕ ЛОВУШКИ -->
+    <div class="modal-overlay" id="modal-deploy">
+        <div class="modal-content" style="width:700px;">
+            <div class="modal-header">
+                <h3 style="font-size:14px; font-weight:600; color:var(--accent);" id="modal-deploy-title">Развертывание ловушки</h3>
                 <button class="modal-close" onclick="closeModal('modal-deploy')">&times;</button>
             </div>
-            <div style="margin-bottom: 12px; display:flex; gap:8px;">
-                <button class="btn btn-secondary" onclick="switchDeployFormat('docker-compose')">docker-compose.yml</button>
-                <button class="btn btn-secondary" onclick="switchDeployFormat('bash')">Linux Bash (curl)</button>
-                <button class="btn btn-secondary" onclick="switchDeployFormat('powershell')">Windows PowerShell</button>
+            <div class="modal-body">
+                <div style="display:flex; gap:8px; margin-bottom:12px;">
+                    <button class="btn btn-contour" onclick="switchDeployFormat('docker-compose')">docker-compose.yml</button>
+                    <button class="btn btn-contour" onclick="switchDeployFormat('bash')">Linux Bash (curl)</button>
+                    <button class="btn btn-contour" onclick="switchDeployFormat('powershell')">Windows PowerShell</button>
+                </div>
+                <pre class="code-block" id="deploy-code-block"></pre>
             </div>
-            <pre class="code-block" id="deploy-code-block"></pre>
-            <div style="margin-top: 16px; display:flex; justify-content: flex-end;">
-                <button class="btn btn-primary" onclick="copyDeployCode()">Copy Deployment Artifact</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: Session Replay Terminal -->
-    <div class="modal-overlay" id="modal-replay">
-        <div class="modal-content" style="width: 800px;">
-            <div class="modal-header">
-                <h3 style="color: var(--green);">📼 Interactive Terminal Session Replay</h3>
-                <button class="modal-close" onclick="closeModal('modal-replay')">&times;</button>
-            </div>
-            <div id="session-terminal" class="code-block" style="background:#000; color:#4ade80; height: 420px; font-size:13px; font-family: monospace;">
-                <!-- Replay outputs rendered here -->
+            <div class="modal-footer">
+                <button class="btn btn-contour" onclick="closeModal('modal-deploy')">Закрыть</button>
+                <button class="btn btn-primary" onclick="copyDeployCode()">Копировать</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL: Create Profile -->
-    <div class="modal-overlay" id="modal-create-profile">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 style="color: var(--cyan);">Create Deception Profile (FR-C1)</h3>
-                <button class="modal-close" onclick="closeModal('modal-create-profile')">&times;</button>
+    <!-- МОДАЛЬНОЕ ОКНО: КОНСТРУКТОР ПРОФИЛЯ С 5 РАЗДЕЛАМИ -->
+    <div class="modal-overlay" id="modal-profile">
+        <div class="modal-content" style="width:680px; max-height:85vh; display:flex; flex-direction:column; overflow:hidden;">
+            <div class="modal-header" style="flex-shrink:0;">
+                <h3 style="font-size:14px; font-weight:600; color:var(--accent);" id="modal-profile-title">Создание профиля ловушки</h3>
+                <button class="modal-close" onclick="closeModal('modal-profile')">&times;</button>
             </div>
-            <form onsubmit="submitCreateProfile(event)">
-                <div class="form-group">
-                    <label>Profile Name</label>
-                    <input type="text" id="prof-name" class="form-input" placeholder="e.g. Banking-Perimeter-Trap" required>
+            <form onsubmit="submitProfileForm(event)" style="display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; margin:0;">
+                <div class="modal-body" style="overflow-y:auto; flex:1; min-height:0; padding:20px;">
+                    <!-- Раздел 1: Основное -->
+                    <div style="font-weight:600; color:var(--accent); font-size:13px; margin-bottom:8px; border-bottom:1px solid var(--border); padding-bottom:4px;">1. Основное</div>
+                    <div class="form-group">
+                        <label class="form-label">Название профиля</label>
+                        <input type="text" id="prof-name" class="form-input" required placeholder="Например: Perimeter-Linux-Trap">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Уровень взаимодействия</label>
+                        <select id="prof-level" class="form-select">
+                            <option value="low">Low (Сканирование портов и баннеры)</option>
+                            <option value="medium" selected>Medium (Fake SSH, Web Admin, Файловая система)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Описание</label>
+                        <input type="text" id="prof-desc" class="form-input" placeholder="Назначение профиля">
+                    </div>
+
+                    <!-- Раздел 2: Сервисы и порты -->
+                    <div style="font-weight:600; color:var(--accent); font-size:13px; margin:16px 0 8px; border-bottom:1px solid var(--border); padding-bottom:4px;">2. Сервисы и порты</div>
+                    <div class="form-group">
+                        <label class="form-label">Эмулируемые сервисы (через запятую)</label>
+                        <input type="text" id="prof-services" class="form-input" value="ssh, http, redis">
+                    </div>
+
+                    <!-- Раздел 3: Приманки -->
+                    <div style="font-weight:600; color:var(--accent); font-size:13px; margin:16px 0 8px; border-bottom:1px solid var(--border); padding-bottom:4px;">3. Ложные учётные данные (Приманки)</div>
+                    <div class="form-group">
+                        <label class="form-label">Словарь decoy-аккаунтов (формат: login:password через запятую)</label>
+                        <input type="text" id="prof-creds" class="form-input" placeholder="root:admin123, admin:password, deploy:deploy2026" value="">
+                    </div>
+
+                    <!-- Раздел 4: Логирование -->
+                    <div style="font-weight:600; color:var(--accent); font-size:13px; margin:16px 0 8px; border-bottom:1px solid var(--border); padding-bottom:4px;">4. Логирование</div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <div class="form-group">
+                            <label class="form-label">Детализация логов</label>
+                            <select id="prof-log-level" class="form-select">
+                                <option value="INFO">INFO</option>
+                                <option value="DEBUG" selected>DEBUG</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Лимит размера файла (байт)</label>
+                            <input type="number" id="prof-file-limit" class="form-input" value="1048576">
+                        </div>
+                    </div>
+
+                    <!-- Раздел 5: Маскировка -->
+                    <div style="font-weight:600; color:var(--accent); font-size:13px; margin:16px 0 8px; border-bottom:1px solid var(--border); padding-bottom:4px;">5. Маскировка</div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <div class="form-group">
+                            <label class="form-label">Имя процесса агента (нейтральное)</label>
+                            <input type="text" id="prof-proc-name" class="form-input" value="syslog-ng">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Путь телеметрии (RUM)</label>
+                            <input type="text" id="prof-endpoint" class="form-input" value="/cdn-cgi/rum">
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <div class="form-group">
+                            <label class="form-label">Интервал beacon (с)</label>
+                            <input type="number" id="prof-beacon" class="form-input" value="8" min="2" max="60">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Джиттер (%)</label>
+                            <input type="number" id="prof-jitter" class="form-input" value="35" min="5" max="60">
+                        </div>
+                    </div>
+
+                    <!-- Раздел 6: Личность хоста (Persona) -->
+                    <div style="font-weight:600; color:var(--accent); font-size:13px; margin:16px 0 8px; border-bottom:1px solid var(--border); padding-bottom:4px;">6. Личность хоста (Persona)</div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <div class="form-group">
+                            <label class="form-label">Имя хоста (Hostname)</label>
+                            <input type="text" id="prof-persona-hostname" class="form-input" value="prod-srv-01" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Операционная система</label>
+                            <input type="text" id="prof-persona-os" class="form-input" value="Ubuntu 22.04.4 LTS" required>
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <div class="form-group">
+                            <label class="form-label">Версия ядра Linux</label>
+                            <input type="text" id="prof-persona-kernel" class="form-input" value="5.15.0-89-generic" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Пользователи системы (через запятую)</label>
+                            <input type="text" id="prof-persona-users" class="form-input" value="root, deploy, ubuntu" required>
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+                        <div class="form-group">
+                            <label class="form-label">Базовый Uptime (с)</label>
+                            <input type="number" id="prof-persona-uptime" class="form-input" value="172800" min="60">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Часовой пояс</label>
+                            <input type="text" id="prof-persona-tz" class="form-input" value="UTC">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">IP хоста</label>
+                            <input type="text" id="prof-persona-ip" class="form-input" value="10.0.1.5">
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Interaction Level</label>
-                    <select id="prof-level" class="form-select">
-                        <option value="low">Low (Port scanner & banners)</option>
-                        <option value="medium" selected>Medium (Fake SSH, Web Admin, Fake FS)</option>
-                        <option value="high">High (Sandbox container isolation)</option>
-                    </select>
+                <div class="modal-footer" style="flex-shrink:0; background:var(--surface-1); border-top:1px solid var(--border);">
+                    <button type="button" class="btn btn-contour" onclick="closeModal('modal-profile')">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить профиль</button>
                 </div>
-                <div class="form-group">
-                    <label>Services to Emulate (comma separated)</label>
-                    <input type="text" id="prof-services" class="form-input" value="ssh, http, redis">
+            </form>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: РАЗМЕЩЕНИЕ HONEYTOKEN -->
+    <div class="modal-overlay" id="modal-honeytoken">
+        <div class="modal-content" style="width:500px;">
+            <div class="modal-header">
+                <h3 style="font-size:14px; font-weight:600; color:var(--accent);">Разместить honeytoken</h3>
+                <button class="modal-close" onclick="closeModal('modal-honeytoken')">&times;</button>
+            </div>
+            <form onsubmit="submitHoneytokenForm(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Тип приманки</label>
+                        <select id="ht-type" class="form-select">
+                            <option value="aws_key">AWS-ключ (API Token)</option>
+                            <option value="account">Учётная запись (База данных / Система)</option>
+                            <option value="ssh_key">SSH приватный ключ</option>
+                            <option value="canary_url">URL-ловушка (Canary HTTP)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Целевая ловушка (Medium)</label>
+                        <select id="ht-trap" class="form-select"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Путь размещения</label>
+                        <input type="text" id="ht-path" class="form-input" value="/root/.aws/credentials" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Описание</label>
+                        <input type="text" id="ht-desc" class="form-input" value="Decoy AWS Credentials" required>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Process Masquerade Name (MASK-4)</label>
-                    <input type="text" id="prof-proc" class="form-input" value="systemd-resolved">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-contour" onclick="closeModal('modal-honeytoken')">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Разместить</button>
                 </div>
-                <div class="form-group">
-                    <label>Beacon Jitter Percentage (MASK-5)</label>
-                    <input type="number" id="prof-jitter" class="form-input" value="35" min="10" max="60">
+            </form>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: ДОБАВЛЕНИЕ ПРАВИЛА ОПОВЕЩЕНИЯ -->
+    <div class="modal-overlay" id="modal-rule">
+        <div class="modal-content" style="width:500px;">
+            <div class="modal-header">
+                <h3 style="font-size:14px; font-weight:600; color:var(--accent);">Добавить правило оповещения</h3>
+                <button class="modal-close" onclick="closeModal('modal-rule')">&times;</button>
+            </div>
+            <form onsubmit="submitRuleForm(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Условие / Название</label>
+                        <input type="text" id="rule-name" class="form-input" required placeholder="Например: ≥5 попыток входа за минуту">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Тип проверки</label>
+                        <select id="rule-type" class="form-select">
+                            <option value="brute_force">Подбор паролей (Brute-Force)</option>
+                            <option value="honeytoken">Срабатывание Honeytoken</option>
+                            <option value="file_download">Загрузка вредоносного файла</option>
+                        </select>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <div class="form-group">
+                            <label class="form-label">Порог срабатываний (N)</label>
+                            <input type="number" id="rule-threshold" class="form-input" value="5" min="1" max="100" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Окно проверки (секунд)</label>
+                            <input type="number" id="rule-window" class="form-input" value="60" min="5" max="3600" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Важность оповещения</label>
+                        <select id="rule-severity" class="form-select">
+                            <option value="high" selected>ВЫСОКИЙ</option>
+                            <option value="critical">КРИТИЧЕСКИЙ</option>
+                            <option value="medium">СРЕДНИЙ</option>
+                        </select>
+                    </div>
                 </div>
-                <div style="display:flex; justify-content:flex-end; gap:8px;">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-create-profile')">Cancel</button>
-                    <button type="submit" class="btn btn-cyan">Save Profile</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-contour" onclick="closeModal('modal-rule')">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить правило</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: РЕГИСТРАЦИЯ ЛОВУШКИ -->
+    <div class="modal-overlay" id="modal-register-trap">
+        <div class="modal-content" style="width:500px;">
+            <div class="modal-header">
+                <h3 style="font-size:14px; font-weight:600; color:var(--accent);">Зарегистрировать ловушку</h3>
+                <button class="modal-close" onclick="closeModal('modal-register-trap')">&times;</button>
+            </div>
+            <form onsubmit="submitRegisterTrapForm(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Идентификатор (ID ловушки)</label>
+                        <input type="text" id="reg-trap-id" class="form-input" required placeholder="Например: trap-dmz-03">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Название</label>
+                        <input type="text" id="reg-trap-name" class="form-input" required placeholder="Например: DMZ-Gateway-03">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Профиль детекции</label>
+                        <select id="reg-trap-profile" class="form-select"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Адрес хоста (DMZ IP)</label>
+                        <input type="text" id="reg-trap-ip" class="form-input" value="192.168.10.30" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-contour" onclick="closeModal('modal-register-trap')">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Зарегистрировать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: СМЕНА ПРОФИЛЯ ЛОВУШКИ -->
+    <div class="modal-overlay" id="modal-change-profile">
+        <div class="modal-content" style="width:440px;">
+            <div class="modal-header">
+                <h3 style="font-size:14px; font-weight:600; color:var(--accent);">Сменить профиль ловушки</h3>
+                <button class="modal-close" onclick="closeModal('modal-change-profile')">&times;</button>
+            </div>
+            <form onsubmit="submitChangeProfileForm(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="change-prof-trap-id">
+                    <div class="form-group">
+                        <label class="form-label">Выберите новый профиль</label>
+                        <select id="change-prof-select" class="form-select"></select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-contour" onclick="closeModal('modal-change-profile')">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Применить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: СОЗДАНИЕ ОПЕРАТОРА SOC -->
+    <div class="modal-overlay" id="modal-create-user">
+        <div class="modal-content" style="width:480px;">
+            <div class="modal-header">
+                <h3 style="font-size:14px; font-weight:600; color:var(--accent);">Добавить оператора SOC</h3>
+                <button class="modal-close" onclick="closeModal('modal-create-user')">&times;</button>
+            </div>
+            <form onsubmit="submitCreateUserForm(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Имя пользователя (Логин)</label>
+                        <input type="text" id="new-user-username" class="form-input" required placeholder="Например: soc_analyst_03" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Пароль оператора</label>
+                        <input type="password" id="new-user-password" class="form-input" required placeholder="Минимум 6 символов" autocomplete="new-password">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Роль в системе SOC</label>
+                        <select id="new-user-role" class="form-select">
+                            <option value="analyst_l1" selected>Дежурный аналитик L1 (Triage)</option>
+                            <option value="analyst_l2">Старший аналитик L2 (Threat Hunter)</option>
+                            <option value="soc_lead">Руководитель смены SOC</option>
+                            <option value="auditor">Аудитор ИБ (Комплаенс / Read-only)</option>
+                            <option value="admin">Главный администратор (CISO)</option>
+                        </select>
+                    </div>
+                    <div id="create-user-error" style="color:var(--sev-critical); font-size:12px; margin-top:8px; display:none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-contour" onclick="closeModal('modal-create-user')">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Создать оператора</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: СМЕНА РОЛИ ОПЕРАТОРА -->
+    <div class="modal-overlay" id="modal-change-user-role">
+        <div class="modal-content" style="width:440px;">
+            <div class="modal-header">
+                <h3 style="font-size:14px; font-weight:600; color:var(--accent);">Сменить роль оператора</h3>
+                <button class="modal-close" onclick="closeModal('modal-change-user-role')">&times;</button>
+            </div>
+            <form onsubmit="submitChangeUserRoleForm(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="change-role-user-id">
+                    <div style="font-size:13px; margin-bottom:12px; color:var(--text-secondary);">
+                        Оператор: <strong id="change-role-username" style="color:var(--text);"></strong>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Новая роль</label>
+                        <select id="change-role-select" class="form-select">
+                            <option value="analyst_l1">Дежурный аналитик L1 (Triage)</option>
+                            <option value="analyst_l2">Старший аналитик L2 (Threat Hunter)</option>
+                            <option value="soc_lead">Руководитель смены SOC</option>
+                            <option value="auditor">Аудитор ИБ (Комплаенс)</option>
+                            <option value="admin">Главный администратор (CISO)</option>
+                        </select>
+                    </div>
+                    <div id="change-role-error" style="color:var(--sev-critical); font-size:12px; margin-top:8px; display:none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-contour" onclick="closeModal('modal-change-user-role')">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить роль</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО: СБРОС ПАРОЛЯ ОПЕРАТОРА -->
+    <div class="modal-overlay" id="modal-reset-user-pwd">
+        <div class="modal-content" style="width:440px;">
+            <div class="modal-header">
+                <h3 style="font-size:14px; font-weight:600; color:var(--accent);">Сброс пароля оператора</h3>
+                <button class="modal-close" onclick="closeModal('modal-reset-user-pwd')">&times;</button>
+            </div>
+            <form onsubmit="submitResetUserPwdForm(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="reset-pwd-user-id">
+                    <div style="font-size:13px; margin-bottom:12px; color:var(--text-secondary);">
+                        Оператор: <strong id="reset-pwd-username" style="color:var(--text);"></strong>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Новый пароль</label>
+                        <input type="password" id="reset-pwd-val" class="form-input" required placeholder="Введите новый пароль (мин. 6 симв.)" autocomplete="new-password">
+                    </div>
+                    <div id="reset-pwd-error" style="color:var(--sev-critical); font-size:12px; margin-top:8px; display:none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-contour" onclick="closeModal('modal-reset-user-pwd')">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Обновить пароль</button>
                 </div>
             </form>
         </div>

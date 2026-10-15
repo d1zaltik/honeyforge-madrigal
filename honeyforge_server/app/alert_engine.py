@@ -12,10 +12,10 @@ async def process_event_for_alerts(db: AsyncSession, event: AttackEvent):
     # 1. Immediate Honeytoken Alert
     if event.event_type == "honeytoken_triggered":
         alert = AlertEvent(
-            rule_name="Honeytoken Breach Detected",
+            rule_name="Компрометация токена-приманки (Honeytoken)",
             trap_id=event.trap_id,
             source_ip=event.source_ip,
-            message=f"CRITICAL: Canary honeytoken triggered by {event.source_ip}! Decoy asset compromised: {event.payload_raw or 'Canary Access'}",
+            message=f"КРИТИЧЕСКИЙ: Зафиксирован несанкционированный доступ к приманке с IP {event.source_ip}. Скомпрометированный ресурс: {event.payload_raw or 'Canary Access'}",
             severity="critical",
             created_at=datetime.datetime.utcnow()
         )
@@ -38,10 +38,10 @@ async def process_event_for_alerts(db: AsyncSession, event: AttackEvent):
         cmd_lower = event.command_text.lower()
         if any(kw in cmd_lower for kw in SUSPICIOUS_KEYWORDS):
             alert = AlertEvent(
-                rule_name="Suspicious Post-Exploitation Activity",
+                rule_name="Подозрительная активность в сессии",
                 trap_id=event.trap_id,
                 source_ip=event.source_ip,
-                message=f"Malicious command detected in session: '{event.command_text[:80]}'",
+                message=f"Обнаружена подозрительная команда в сессии: '{event.command_text[:80]}'",
                 severity="high",
                 created_at=datetime.datetime.utcnow()
             )
@@ -58,9 +58,23 @@ async def process_event_for_alerts(db: AsyncSession, event: AttackEvent):
                 "created_at": alert.created_at.isoformat()
             })
 
-    # 3. Brute Force Detection: check auth attempts from this IP in the last 60 seconds
+    # 3. Brute Force Detection: check auth attempts against active brute_force AlertRule
     if event.event_type == "auth_attempt":
-        time_threshold = datetime.datetime.utcnow() - datetime.timedelta(seconds=60)
+        # Check active rule for specific trap or global (trap_id is None)
+        rule_q = select(AlertRule).where(
+            AlertRule.rule_type == "brute_force",
+            AlertRule.is_enabled == True,
+            (AlertRule.trap_id == None) | (AlertRule.trap_id == event.trap_id)
+        )
+        rule_res = await db.execute(rule_q)
+        rule = rule_res.scalars().first()
+        if not rule:
+            return
+
+        window_s = rule.window_seconds or 60
+        threshold = rule.threshold or 5
+        time_threshold = datetime.datetime.utcnow() - datetime.timedelta(seconds=window_s)
+
         query = select(func.count(AttackEvent.id)).where(
             AttackEvent.source_ip == event.source_ip,
             AttackEvent.event_type == "auth_attempt",
@@ -69,21 +83,21 @@ async def process_event_for_alerts(db: AsyncSession, event: AttackEvent):
         result = await db.execute(query)
         attempt_count = result.scalar() or 0
         
-        if attempt_count >= 5:  # Default threshold: 5 auth attempts/min
-            # Check if alert was recently generated to prevent alert fatigue
+        if attempt_count >= threshold:
+            # Check if alert was recently generated (within 5s) to prevent storming on a single batch
             recent_alert_q = select(AlertEvent).where(
                 AlertEvent.source_ip == event.source_ip,
-                AlertEvent.rule_name == "Credential Brute-Force Wave",
-                AlertEvent.created_at >= time_threshold
+                AlertEvent.rule_name == rule.name,
+                AlertEvent.created_at >= (datetime.datetime.utcnow() - datetime.timedelta(seconds=5))
             )
             recent_res = await db.execute(recent_alert_q)
             if not recent_res.scalars().first():
                 alert = AlertEvent(
-                    rule_name="Credential Brute-Force Wave",
+                    rule_name=rule.name,
                     trap_id=event.trap_id,
                     source_ip=event.source_ip,
-                    message=f"Brute-force attack in progress! {attempt_count} authentication attempts detected within 60s from {event.source_ip}",
-                    severity="high",
+                    message=f"Зафиксирована серия попыток подбора учетных данных: {attempt_count} запросов за {window_s} секунд с IP-адреса {event.source_ip}",
+                    severity=rule.severity or "high",
                     created_at=datetime.datetime.utcnow()
                 )
                 db.add(alert)
