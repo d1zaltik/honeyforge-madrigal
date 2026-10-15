@@ -23,6 +23,7 @@ scratch/
 # Temporary files and Office locks
 ~$*
 *.tmp
+*.pptx
 
 # Local debug screenshots and prompt dumps
 mobile_before.png
