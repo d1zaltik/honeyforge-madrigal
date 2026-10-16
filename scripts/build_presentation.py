@@ -1,9 +1,14 @@
 """
-HoneyForge Presentation Builder v3.0
-Generates a world-class 10-slide PowerPoint presentation (HoneyForge_Defense_Presentation.pptx)
-calibrated precisely for a 5-minute defense + 3-minute Q&A session at UmirHack 2026 (Case «Мадригал»).
-Includes high-res UI screenshots, animated screencast GIF, interactive architecture diagram,
-SOC cyber-palette styling, and exhaustive slide-by-slide speaker notes.
+HoneyForge Presentation Builder v4.0
+Generates a polished 10-slide PowerPoint presentation (HoneyForge_Defense_Presentation.pptx)
+for UmirHack 2026 (Case «Мадригал»).
+
+Key updates in v4.0:
+- Slide 1: Team «самсунг», 4 members with specific roles (Igor Firsov as Captain/Architect),
+  prominent QR Code with white base and direct 1-Click zero-auth jury demo link.
+- Completely removed all timing intervals (no ⏱ badges or time markers on slides).
+- Embedded animated GIF (trap_workflow.gif) on Slide 5 showcasing trap creation workflow.
+- Eliminated redundant text and visual clutter, ensuring high contrast cyber SOC theme.
 """
 import os
 import sys
@@ -48,10 +53,10 @@ def set_slide_background(slide):
     bg_shape.line.fill.background()
 
 
-def add_header(slide, category_text, title_text, subtitle_text, timing_text):
-    """Adds uniform modern header to content slides."""
+def add_header(slide, category_text, title_text, subtitle_text):
+    """Adds uniform modern header to content slides without any time markers."""
     # Category badge
-    cat_shape = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(0.36), Inches(3.2), Inches(0.32))
+    cat_shape = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(0.36), Inches(3.6), Inches(0.32))
     cat_shape.fill.solid()
     cat_shape.fill.fore_color.rgb = RGBColor(17, 35, 56)
     cat_shape.line.color.rgb = COLOR_CYAN
@@ -65,21 +70,6 @@ def add_header(slide, category_text, title_text, subtitle_text, timing_text):
     p_cat.font.bold = True
     p_cat.font.color.rgb = COLOR_CYAN
     p_cat.alignment = PP_ALIGN.CENTER
-
-    # Timing badge (right side)
-    time_shape = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(10.6), Inches(0.36), Inches(1.9), Inches(0.32))
-    time_shape.fill.solid()
-    time_shape.fill.fore_color.rgb = RGBColor(35, 25, 15)
-    time_shape.line.color.rgb = COLOR_AMBER
-    time_shape.line.width = Pt(1)
-    tf_time = time_shape.text_frame
-    p_time = tf_time.paragraphs[0]
-    p_time.text = f"⏱ {timing_text}"
-    p_time.font.name = FONT_CODE
-    p_time.font.size = Pt(9)
-    p_time.font.bold = True
-    p_time.font.color.rgb = COLOR_AMBER
-    p_time.alignment = PP_ALIGN.CENTER
 
     # Title text
     tx_title = slide.shapes.add_textbox(Inches(0.75), Inches(0.72), Inches(11.8), Inches(0.55))
@@ -111,7 +101,6 @@ def add_card(slide, left, top, width, height, title, items, accent_color=COLOR_A
     card.line.color.rgb = COLOR_BORDER
     card.line.width = Pt(1)
 
-    # Dedicated textbox inside card to avoid text-to-border clipping
     tx = slide.shapes.add_textbox(Inches(left + 0.22), Inches(top + 0.16), Inches(width - 0.44), Inches(height - 0.28))
     tf = tx.text_frame
     tf.word_wrap = True
@@ -173,118 +162,179 @@ def build_deck():
     blank_layout = prs.slide_layouts[6]
 
     # ==========================================
-    # SLIDE 1: TITLE SLIDE (0:00 - 0:25)
+    # SLIDE 1: ТИТУЛЬНЫЙ СЛАЙД (КОМАНДА «САМСУНГ» + QR ДЛЯ ЖЮРИ)
     # ==========================================
     s1 = prs.slides.add_slide(blank_layout)
     set_slide_background(s1)
 
-    pill1 = s1.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(0.75), Inches(3.4), Inches(0.32))
+    # Pill: UmirHack 2026 // Кейс Мадригал
+    pill1 = s1.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(0.65), Inches(3.6), Inches(0.34))
     pill1.fill.solid()
     pill1.fill.fore_color.rgb = RGBColor(35, 25, 15)
     pill1.line.color.rgb = COLOR_AMBER
     pill1.line.width = Pt(1)
     tf_p1 = pill1.text_frame
     p_p1 = tf_p1.paragraphs[0]
-    p_p1.text = "⚡ UMIRHACK 2026 // КЕЙС МАДРИГАЛ"
+    p_p1.text = "UMIRHACK 2026 // КЕЙС МАДРИГАЛ"
     p_p1.font.name = FONT_CODE
-    p_p1.font.size = Pt(9)
+    p_p1.font.size = Pt(9.5)
     p_p1.font.bold = True
     p_p1.font.color.rgb = COLOR_AMBER
     p_p1.alignment = PP_ALIGN.CENTER
 
-    tx_main = s1.shapes.add_textbox(Inches(0.75), Inches(1.2), Inches(5.5), Inches(1.8))
+    # Main Brand & Subtitle
+    tx_main = s1.shapes.add_textbox(Inches(0.75), Inches(1.15), Inches(6.8), Inches(1.9))
     tf_m = tx_main.text_frame
     tf_m.word_wrap = True
     p_m1 = tf_m.paragraphs[0]
     p_m1.text = "HoneyForge"
     p_m1.font.name = FONT_TITLE
-    p_m1.font.size = Pt(46)
+    p_m1.font.size = Pt(48)
     p_m1.font.bold = True
     p_m1.font.color.rgb = COLOR_AMBER_BRIGHT
 
     p_m2 = tf_m.add_paragraph()
     p_m2.text = "Платформа активной кибердецепции и Threat Intelligence для корпоративного SOC"
     p_m2.font.name = FONT_TITLE
-    p_m2.font.size = Pt(14)
+    p_m2.font.size = Pt(13.5)
     p_m2.font.color.rgb = COLOR_WHITE
     p_m2.space_before = Pt(6)
 
-    # 4 Feature Badges in 2x2 grid
-    badge_data = [
-        ("✓ Zero False Positives", COLOR_GREEN, 0.8, 3.1),
-        ("✓ Stealth DMZ Изоляция", COLOR_CYAN, 3.5, 3.1),
-        ("✓ 1-Click Деплой Агентов", COLOR_AMBER, 0.8, 3.55),
-        ("✓ STIX 2.1 SIEM Экспорт", COLOR_WHITE, 3.5, 3.55),
+    # Team Card («самсунг» - 4 человека с ролями)
+    card_team = s1.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(3.3), Inches(6.7), Inches(3.6))
+    card_team.fill.solid()
+    card_team.fill.fore_color.rgb = COLOR_CARD
+    card_team.line.color.rgb = COLOR_BORDER
+    card_team.line.width = Pt(1)
+
+    tx_team = s1.shapes.add_textbox(Inches(1.05), Inches(3.45), Inches(6.2), Inches(3.3))
+    tf_team = tx_team.text_frame
+    tf_team.word_wrap = True
+    tf_team.margin_left = tf_team.margin_right = tf_team.margin_top = tf_team.margin_bottom = 0
+
+    p_team_title = tf_team.paragraphs[0]
+    p_team_title.text = "Решение представлено командой «самсунг»"
+    p_team_title.font.name = FONT_TITLE
+    p_team_title.font.size = Pt(13.5)
+    p_team_title.font.bold = True
+    p_team_title.font.color.rgb = COLOR_CYAN
+    p_team_title.space_after = Pt(10)
+
+    team_members = [
+        ("Фирсов Игорь (капитан)", "Архитектура C2 ядра, Anti-detection и Скрытность ловушек", COLOR_AMBER_BRIGHT),
+        ("Чекаленко Александр", "Frontend-разработчик / Cyber SOC Dashboard & UI/UX", COLOR_WHITE),
+        ("Попельнухин Георгий", "Data Engineer / СУБД PostgreSQL, Буферизация и Хранение событий", COLOR_WHITE),
+        ("Бауэр Евгений", "DevSecOps / Docker-оркестрация и Сетевая изоляция периметров", COLOR_WHITE),
     ]
-    for b_text, b_color, bx, by in badge_data:
-        b_shp = s1.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(bx), Inches(by), Inches(2.6), Inches(0.36))
-        b_shp.fill.solid()
-        b_shp.fill.fore_color.rgb = COLOR_CARD
-        b_shp.line.color.rgb = b_color
-        b_shp.line.width = Pt(1)
-        tf_b = b_shp.text_frame
-        p_b = tf_b.paragraphs[0]
-        p_b.text = b_text
-        p_b.font.name = FONT_CODE
-        p_b.font.size = Pt(9)
-        p_b.font.color.rgb = b_color
-        p_b.alignment = PP_ALIGN.CENTER
 
-    # Team & Meta Card
-    card_meta = s1.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(4.15), Inches(5.3), Inches(2.65))
-    card_meta.fill.solid()
-    card_meta.fill.fore_color.rgb = COLOR_CARD
-    card_meta.line.color.rgb = COLOR_BORDER
-    card_meta.line.width = Pt(1)
+    for name, role, name_color in team_members:
+        p_name = tf_team.add_paragraph()
+        p_name.text = f"• {name}"
+        p_name.font.name = FONT_TITLE
+        p_name.font.size = Pt(11)
+        p_name.font.bold = True
+        p_name.font.color.rgb = name_color
 
-    tx_meta = s1.shapes.add_textbox(Inches(1.02), Inches(4.32), Inches(4.85), Inches(2.35))
-    tf_meta = tx_meta.text_frame
-    tf_meta.word_wrap = True
-    tf_meta.margin_left = tf_meta.margin_right = tf_meta.margin_top = tf_meta.margin_bottom = 0
-    
-    p_meta0 = tf_meta.paragraphs[0]
-    p_meta0.text = "Паспорт решения и защита"
-    p_meta0.font.name = FONT_TITLE
-    p_meta0.font.size = Pt(12)
-    p_meta0.font.bold = True
-    p_meta0.font.color.rgb = COLOR_CYAN
-    p_meta0.space_after = Pt(7)
+        p_role = tf_team.add_paragraph()
+        p_role.text = f"   Роль: {role}"
+        p_role.font.name = FONT_BODY
+        p_role.font.size = Pt(9.5)
+        p_role.font.color.rgb = COLOR_GRAY
+        p_role.space_after = Pt(6)
 
-    meta_lines = [
-        ("Команда:", "HoneyForge Team"),
-        ("Кейс:", "«Мадригал» — Deception & Honeypot Management"),
-        ("Регламент:", "5 минут доклад + 3 минуты сессия вопросов (Q&A)"),
-        ("Стенд Live:", "https://uniprotkb-transportation-las-websites.trycloudflare.com"),
-        ("Верификация:", "100% требований ТЗ • 15/15 Pytest • 11/11 Stealth"),
-    ]
-    for lbl, val in meta_lines:
-        pm = tf_meta.add_paragraph()
-        pm.text = f"{lbl} {val}"
-        pm.font.name = FONT_BODY
-        pm.font.size = Pt(9.5)
-        pm.font.color.rgb = COLOR_WHITE
-        pm.space_after = Pt(3)
+    # Right Side: Prominent QR Code Card for Jury
+    qr_card = s1.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(7.8), Inches(1.15), Inches(4.7), Inches(5.75))
+    qr_card.fill.solid()
+    qr_card.fill.fore_color.rgb = COLOR_CARD_DARK
+    qr_card.line.color.rgb = COLOR_AMBER
+    qr_card.line.width = Pt(1.5)
 
-    add_image_panel(s1, 6.4, 1.1, 6.1, 5.7, "01_dashboard.png", "HoneyForge CISO Console — Live SOC Monitoring Dashboard", COLOR_AMBER)
+    # QR Card Title
+    tx_qrt = s1.shapes.add_textbox(Inches(8.0), Inches(1.35), Inches(4.3), Inches(0.6))
+    tf_qrt = tx_qrt.text_frame
+    tf_qrt.word_wrap = True
+    p_qrt = tf_qrt.paragraphs[0]
+    p_qrt.text = "Подключение жюри к стенду"
+    p_qrt.font.name = FONT_TITLE
+    p_qrt.font.size = Pt(15)
+    p_qrt.font.bold = True
+    p_qrt.font.color.rgb = COLOR_AMBER_BRIGHT
+    p_qrt.alignment = PP_ALIGN.CENTER
+
+    p_qrs = tf_qrt.add_paragraph()
+    p_qrs.text = "Наведите камеру смартфона для мгновенного входа:"
+    p_qrs.font.name = FONT_BODY
+    p_qrs.font.size = Pt(10)
+    p_qrs.font.color.rgb = COLOR_GRAY
+    p_qrs.alignment = PP_ALIGN.CENTER
+
+    # White container for QR Code
+    qr_box = s1.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(8.8), Inches(2.15), Inches(2.7), Inches(2.7))
+    qr_box.fill.solid()
+    qr_box.fill.fore_color.rgb = RGBColor(255, 255, 255)
+    qr_box.line.color.rgb = COLOR_WHITE
+    qr_box.line.width = Pt(1)
+
+    qr_path = os.path.join(ASSETS_DIR, "jury_qr_code.png")
+    if os.path.exists(qr_path):
+        s1.shapes.add_picture(qr_path, Inches(8.95), Inches(2.3), width=Inches(2.4), height=Inches(2.4))
+
+    # Badge: 1-Click Демо-доступ
+    b_demo = s1.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(8.2), Inches(5.05), Inches(3.9), Inches(0.38))
+    b_demo.fill.solid()
+    b_demo.fill.fore_color.rgb = RGBColor(17, 35, 56)
+    b_demo.line.color.rgb = COLOR_CYAN
+    b_demo.line.width = Pt(1)
+    tf_bd = b_demo.text_frame
+    p_bd = tf_bd.paragraphs[0]
+    p_bd.text = "👁️ 1-Click Демо-доступ (Без ввода пароля)"
+    p_bd.font.name = FONT_CODE
+    p_bd.font.size = Pt(9.5)
+    p_bd.font.bold = True
+    p_bd.font.color.rgb = COLOR_CYAN
+    p_bd.alignment = PP_ALIGN.CENTER
+
+    # Direct URL below
+    tx_url = s1.shapes.add_textbox(Inches(8.0), Inches(5.55), Inches(4.3), Inches(1.1))
+    tf_url = tx_url.text_frame
+    tf_url.word_wrap = True
+    p_url1 = tf_url.paragraphs[0]
+    p_url1.text = "Ссылка для браузера:"
+    p_url1.font.name = FONT_BODY
+    p_url1.font.size = Pt(9.5)
+    p_url1.font.color.rgb = COLOR_GRAY
+    p_url1.alignment = PP_ALIGN.CENTER
+
+    p_url2 = tf_url.add_paragraph()
+    p_url2.text = "million-heights-nursing-loud.trycloudflare.com"
+    p_url2.font.name = FONT_CODE
+    p_url2.font.size = Pt(8.5)
+    p_url2.font.color.rgb = COLOR_WHITE
+    p_url2.alignment = PP_ALIGN.CENTER
+
+    p_url3 = tf_url.add_paragraph()
+    p_url3.text = "Режим: Просмотр событий, парка ловушек и аналитики"
+    p_url3.font.name = FONT_BODY
+    p_url3.font.size = Pt(8.5)
+    p_url3.font.color.rgb = COLOR_GREEN
+    p_url3.alignment = PP_ALIGN.CENTER
 
     s1.notes_slide.notes_text_frame.text = (
-        "СЛАЙД 1 (0:00 - 0:25)\n"
+        "СЛАЙД 1: ВСТУПЛЕНИЕ И КОМАНДА\n"
         "РЕЧЬ ДОКЛАДЧИКА:\n"
-        "«Добрый день, уважаемые члены жюри и эксперты! Мы представляем проект HoneyForge — "
-        "корпоративную платформу активной кибердецепции и Threat Intelligence, созданную для кейса «Мадригал».\n"
-        "Сегодня классический периметр защиты размыт, а обнаружение злоумышленников внутри корпоративной сети занимает недели и месяцы. "
-        "HoneyForge меняет правила игры: мы превращаем инфраструктуру компании в минное поле для атакующего, где любой несанкционированный шаг "
-        "приводит к мгновенному обнаружению с абсолютной точностью — 100% Zero False Positives.\n"
-        "Платформа полностью развернута, протестирована и доступна вживую. Перейдем к концепции решения!»"
+        "«Добрый день, уважаемые члены жюри и эксперты! Меня зовут Фирсов Игорь, капитан команды «самсунг».\n"
+        "Мы разработали платформу HoneyForge — систему активной кибердецепции и Threat Intelligence для корпоративного SOC.\n"
+        "Справа на слайде размещен QR-код: вы можете отсканировать его прямо сейчас со смартфона и без ввода пароля попасть в живой демо-стенд HoneyForge, чтобы отслеживать работу платформы в реальном времени параллельно с защитой.\n"
+        "Перейдем к сути проблемы и концепции решения!»"
     )
 
     # ==========================================
-    # SLIDE 2: ПРОБЛЕМА И КОНЦЕПЦИЯ (0:25 - 0:55)
+    # SLIDE 2: ПРОБЛЕМА И КОНЦЕПЦИЯ
     # ==========================================
     s2 = prs.slides.add_slide(blank_layout)
     set_slide_background(s2)
     add_header(s2, "Концепция и Ценность", "Проблема обнаружения и подход HoneyForge", 
-               "Почему традиционные SIEM/EDR слепы к скрытным атакам и как Deception решает эту задачу", "0:25 - 0:55 (30с)")
+               "Почему традиционные SIEM/EDR слепы к скрытным атакам и как Deception решает эту задачу")
 
     add_card(s2, 0.8, 1.75, 5.4, 2.55, "Боли корпоративной безопасности (SIEM/EDR)", [
         "Alert Fatigue: тысячи алертов в день, аналитики SOC тонут в рутине",
@@ -303,22 +353,22 @@ def build_deck():
     add_image_panel(s2, 6.5, 1.75, 6.0, 5.15, "02_traps_park.png", "Парк ловушек HoneyForge: реальные IP, порты, статусы и привязка сервисов", COLOR_AMBER)
 
     s2.notes_slide.notes_text_frame.text = (
-        "СЛАЙД 2 (0:25 - 0:55)\n"
+        "СЛАЙД 2: ПРОБЛЕМА И КОНЦЕПЦИЯ\n"
         "РЕЧЬ ДОКЛАДЧИКА:\n"
         "«В чем главная боль современного SOC? Команды реагирования перегружены тысячами событий из SIEM и EDR. "
-        "Среди шума критические атаки теряются, а злоумышленники месяцами перемещаются по сети, используя легитимные учетки и инструменты администрирования.\n"
+        "Среди шума критические атаки теряются, а злоумышленники месяцами перемещаются по сети, используя легитимные учетки.\n"
         "HoneyForge решает эту проблему в корне через принцип Zero False Positives. "
         "В нашей системе ловушки и цифровые приманки мимикрируют под реальные сервисы компании: SSH-серверы, базы данных, API и токены в репозиториях. "
-        "Сотрудникам они не нужны, поэтому любое касание приманки — это гарантированный инцидент 100% достоверности. Аналитик SOC не тратит время на проверку ложных срабатываний, а сразу начинает расследование!»"
+        "Сотрудникам они не нужны, поэтому любое касание приманки — это гарантированный инцидент 100% достоверности. Аналитик сразу начинает расследование!»"
     )
 
     # ==========================================
-    # SLIDE 3: АРХИТЕКТУРА И СТЕК (0:55 - 1:30)
+    # SLIDE 3: АРХИТЕКТУРА И СТЕК
     # ==========================================
     s3 = prs.slides.add_slide(blank_layout)
     set_slide_background(s3)
     add_header(s3, "Архитектура & Stealth", "Бескомпромиссная изоляция и Технологический стек",
-               "Zero-Trust разделение контуров DMZ и Management, маскировка под RUM-телеметрию и системные демоны", "0:55 - 1:30 (35с)")
+               "Zero-Trust разделение контуров DMZ и Management, маскировка под RUM-телеметрию и системные демоны")
 
     add_card(s3, 0.8, 1.75, 5.3, 2.55, "Архитектурная безопасность (Stealth & Isolation)", [
         "Строгое разделение сетей: sysmon_internal_dmz (ловушки) vs sysmon_internal_mgmt (ядро)",
@@ -330,8 +380,8 @@ def build_deck():
     add_card(s3, 0.8, 4.45, 5.3, 2.45, "Технологический стек платформы", [
         "Backend: Python 3.11, FastAPI (async), SQLAlchemy 2.0, Pydantic v2",
         "База данных & KeyStore: PostgreSQL 15, AES-256-GCM + PBKDF2 (100,000 итераций)",
-        "Edge & Gateway: Nginx Reverse Proxy, Server-Sent Events (SSE) реального времени",
-        "Тестирование: Pytest (15/15), Playwright E2E, 11/11 проверок скрытности (Stealth Check)"
+        "Edge & Gateway: Двойной Nginx Reverse Proxy, Server-Sent Events (SSE)",
+        "Тестирование: Pytest (22/22), 11/11 проверок скрытности (Stealth Realism Audit)"
     ], COLOR_AMBER)
 
     # Custom Visual Architecture Diagram on the right
@@ -424,13 +474,13 @@ def build_deck():
     p_mg1.font.bold = True
     p_mg1.font.color.rgb = COLOR_CYAN
     p_mg2 = tf_mgmt.add_paragraph()
-    p_mg2.text = "• HoneyForge Core C2 (FastAPI async + Event Bus + SSE Broadcast)\n• PostgreSQL 15: изоляция схем, аудит, IoC-хранилище\n• Cryptographic KeyStore: PBKDF2-HMAC-SHA256 + AES-256-GCM\n• Доступ операторов SOC: HTTPS / mTLS, 6 ролей (RBAC)"
+    p_mg2.text = "• HoneyForge Core C2 (FastAPI async + Event Bus + WebSocket/SSE Broadcast)\n• PostgreSQL 15: изоляция схем, аудит, IoC-хранилище\n• Cryptographic KeyStore: PBKDF2-HMAC-SHA256 + AES-256-GCM\n• Доступ операторов SOC: HTTPS / mTLS, 6 ролей (RBAC)"
     p_mg2.font.name = FONT_BODY
     p_mg2.font.size = Pt(8.5)
     p_mg2.font.color.rgb = COLOR_WHITE
 
     s3.notes_slide.notes_text_frame.text = (
-        "СЛАЙД 3 (0:55 - 1:30)\n"
+        "СЛАЙД 3: АРХИТЕКТУРА И СТЕК\n"
         "РЕЧЬ ДОКЛАДЧИКА:\n"
         "«Ключевой фактор успешной ловушки — чтобы атакующий ни на секунду не догадался, что он находится в песочнице.\n"
         "На диаграмме справа показана наша архитектура изоляции. Внутри контейнеров процессы имитируют стандартные системные демоны Linux — rsyslogd и systemd-resolved. "
@@ -440,57 +490,56 @@ def build_deck():
     )
 
     # ==========================================
-    # SLIDE 4: ПАРК ЛОВУШЕК И 1-CLICK ДЕПЛОЙ (1:30 - 2:05)
+    # SLIDE 4: КОНСТРУКТОР ПРОФИЛЕЙ И 1-CLICK ДЕПЛОЙ
     # ==========================================
     s4 = prs.slides.add_slide(blank_layout)
     set_slide_background(s4)
-    add_header(s4, "Парк Ловушек & Деплой", "Управление жизненным циклом и 1-Click Развертывание",
-               "Автоматическая генерация манифестов Docker Compose, bash и PowerShell со встроенными крипто-ключами", "1:30 - 2:05 (35с)")
+    add_header(s4, "Конструктор Профилей & Деплой", "Конструктор профилей и Управление парком ловушек",
+               "Настройка реалистичной личности сервера (Persona) и автоматическая генерация манифестов запуска")
 
-    add_card(s4, 0.8, 1.75, 5.4, 2.55, "Возможности управления ловушками", [
-        "Гибкие профили интерактивности: Low-Interaction (SSH banner/tarpit) и Medium (Fake Shell)",
-        "Параметры реализма: эмуляция Debian 12 / Ubuntu 22.04, правдоподобный uptime и хостнеймы",
-        "Защита от сканеров: Tarpit-задержки ответов для противодействия автоматическому nmap",
-        "Мониторинг доступности: Heartbeat-чеки со статусом Online/Offline в реальном времени"
+    add_card(s4, 0.8, 1.75, 5.4, 2.55, "Конструктор цифровой личности (Persona)", [
+        "Гибкие профили интерактивности: Low-Interaction (TCP tarpit) и Medium (Fake Shell)",
+        "Параметры реализма: эмуляция Ubuntu 22.04 LTS, версии ядра Linux, uptime и хостнеймы",
+        "Аутентичные баннеры: согласованные версии OpenSSH 8.9p1, Apache 2.4.52, Redis 7.0",
+        "Приманочные учетные записи (decoy credentials) для перехвата словарей брутфорса"
     ], COLOR_AMBER)
 
     add_card(s4, 0.8, 4.45, 5.4, 2.45, "1-Click Автоматический Деплой", [
         "Генерация docker-compose.yml с готовой привязкой портов и маппингом сетей",
-        "Генерация bash / curl однострочников для Linux серверов",
+        "Генерация bash / curl однострочников для моментального деплоя в Linux",
         "Генерация PowerShell скриптов для Windows инфраструктуры",
         "Автоматическая деривация уникального HMAC-токена агента (NODE_KEY) на лету"
     ], COLOR_CYAN)
 
-    add_image_panel(s4, 6.5, 1.75, 6.0, 5.15, "03_trap_deploy_modal.png", "Модальное окно 1-Click деплоя: Docker Compose YAML, Bash и PowerShell", COLOR_AMBER)
+    add_image_panel(s4, 6.5, 1.75, 6.0, 5.15, "05_profile_modal.png", "Конструктор профиля ловушки: сервисы, приманки, маскировка и параметры Persona", COLOR_AMBER)
 
     s4.notes_slide.notes_text_frame.text = (
-        "СЛАЙД 4 (1:30 - 2:05)\n"
+        "СЛАЙД 4: КОНСТРУКТОР ПРОФИЛЕЙ И ДЕПЛОЙ\n"
         "РЕЧЬ ДОКЛАДЧИКА:\n"
-        "«На этом слайде вы видите, как оператор SOC развертывает новую ловушку буквально за 30 секунд.\n"
-        "HoneyForge поддерживает профили различного уровня реализма: от Low-Interaction с эмуляцией баннеров и tarpit-задержками, истощающими сканеры злоумышленников, до Medium-Interaction с правдоподобной эмуляцией командной строки Linux.\n"
-        "При нажатии кнопки 'Развернуть' платформа автоматически генерирует готовый Docker Compose файл, bash-скрипт или команду PowerShell. "
-        "В каждый скрипт уже вшит уникальный криптографический HMAC-токен для защищенной авторизации агента на шлюзе телеметрии.\n"
-        "Оператору достаточно скопировать команду и выполнить ее на любом хосте или сервере компании!»"
+        "«На этом слайде показан наш конструктор профилей.\n"
+        "Оператор может настроить полную цифровую личность сервера: операционную систему, версию ядра Linux, эмулируемые сервисы (SSH, HTTP, Redis, FTP, Telnet) и приманочные пароли.\n"
+        "При нажатии кнопки 'Развернуть' платформа автоматически генерирует готовый Docker Compose файл, bash-скрипт или команду PowerShell со встроенным криптографическим ключом узла.\n"
+        "Оператору достаточно скопировать команду и выполнить ее на любом сервере компании!»"
     )
 
     # ==========================================
-    # SLIDE 5: СКРИНКАСТ / ДЕМО СОЗДАНИЯ (2:05 - 2:35)
+    # SLIDE 5: СКРИНКАСТ / GIF СОЗДАНИЯ ЛОВУШКИ
     # ==========================================
     s5 = prs.slides.add_slide(blank_layout)
     set_slide_background(s5)
     add_header(s5, "Скринкаст & Демо", "Скринкаст: Процесс создания и активации ловушки",
-               "Анимированная демонстрация полного цикла: от настройки профиля до регистрации в кластере", "2:05 - 2:35 (30с)")
+               "Анимированная демонстрация полного цикла: от настройки профиля в конструкторе до регистрации в кластере")
 
-    add_card(s5, 0.8, 1.75, 5.4, 1.6, "1. Настройка профиля реализма", [
+    add_card(s5, 0.8, 1.75, 5.4, 1.6, "1. Настройка профиля в конструкторе", [
         "Выбор уровня: Low (Port probe/Tarpit) или Medium (Shell emulator)",
-        "Привязка сетевых сервисов: SSH (порт 2222), HTTP/API (порт 8080)",
+        "Привязка сетевых сервисов: SSH (порт 2222), HTTP/API (порт 8088)",
         "Маскировка под системные демоны ОС: rsyslogd / systemd-resolved"
     ], COLOR_CYAN)
 
     add_card(s5, 0.8, 3.45, 5.4, 1.6, "2. Выпуск криптографических ключей", [
         "Мгновенная генерация уникального NODE_KEY и HMAC-секрета телеметрии",
         "Шифрование секрета в локальном KeyStore алгоритмом AES-256-GCM",
-        "Безопасная доставка в деплой-команду без раскрытия паролей"
+        "Безопасная доставка в деплой-команду без раскрытия мастер-паролей"
     ], COLOR_AMBER)
 
     add_card(s5, 0.8, 5.15, 5.4, 1.75, "3. Активация и мониторинг Live", [
@@ -500,25 +549,25 @@ def build_deck():
     ], COLOR_GREEN)
 
     # Animated screencast GIF
-    add_image_panel(s5, 6.5, 1.75, 6.0, 5.15, "trap_workflow.gif", "Скринкаст создания и развертывания ловушки (Loop в полноэкранном режиме)", COLOR_GREEN)
+    add_image_panel(s5, 6.5, 1.75, 6.0, 5.15, "trap_workflow.gif", "Скринкаст создания и развертывания ловушки (Анимация)", COLOR_GREEN)
 
     s5.notes_slide.notes_text_frame.text = (
-        "СЛАЙД 5 (2:05 - 2:35)\n"
+        "СЛАЙД 5: СКРИНКАСТ СОЗДАНИЯ ЛОВУШКИ\n"
         "РЕЧЬ ДОКЛАДЧИКА:\n"
         "«Перед вами скринкаст, наглядно демонстрирующий полный цикл создания ловушки в живом интерфейсе HoneyForge.\n"
-        "Смотрите: оператор выбирает профиль реализма, указывает имя сервиса и нажимает кнопку создания. "
+        "Оператор выбирает профиль реализма, указывает имя сервиса и сохраняет настройки. "
         "В ту же секунду платформа генерирует уникальный криптографический ключ узла и предоставляет готовый деплой-манифест.\n"
         "После запуска контейнера ловушка мгновенно связывается с Edge-шлюзом телеметрии, подтверждает HMAC-подпись и загорается зеленым индикатором Online в консоли SOC. "
-        "Весь процесс занимает менее минуты и не требует глубоких познаний в Linux-администрировании!»"
+        "Весь процесс занимает менее минуты!»"
     )
 
     # ==========================================
-    # SLIDE 6: ИНТЕРАКТИВНЫЕ СЕССИИ И ПЕРЕХВАТ MALWARE (2:35 - 3:15)
+    # SLIDE 6: ИНТЕРАКТИВНЫЕ СЕССИИ И ПЕРЕХВАТ MALWARE
     # ==========================================
     s6 = prs.slides.add_slide(blank_layout)
     set_slide_background(s6)
     add_header(s6, "Анализ атак & Forensics", "Интерактивные сессии и Перехват вредоносного ПО",
-               "Полнотекстовое TTY-логирование команд хакера, безопасный карантин артефактов и хеширование SHA-256", "2:35 - 3:15 (40с)")
+               "Полнотекстовое TTY-логирование команд хакера, безопасный карантин артефактов и хеширование SHA-256")
 
     add_card(s6, 0.8, 1.75, 5.4, 2.55, "Мониторинг сессий в реальном времени", [
         "TTY-логирование: запись каждой набранной команды, аргументов и вывода терминала",
@@ -537,22 +586,21 @@ def build_deck():
     add_image_panel(s6, 6.5, 1.75, 6.0, 5.15, "07_session_modal.png", "Детальный просмотр сессии sess-8f12a9: TTY-лог и перехваченный пейлоад с SHA-256", COLOR_CYAN)
 
     s6.notes_slide.notes_text_frame.text = (
-        "СЛАЙД 6 (2:35 - 3:15)\n"
+        "СЛАЙД 6: ИНТЕРАКТИВНЫЕ СЕССИИ И MALWARE\n"
         "РЕЧЬ ДОКЛАДЧИКА:\n"
         "«Что происходит, когда хакер подключается к нашей ловушке? Перед вами реальный пример перехвата сессии.\n"
         "HoneyForge в реальном времени ведет полнотекстовое TTY-логирование каждого действия злоумышленника: вы видите, как он выполняет команду whoami, затем скачивает вредоносный дроппер через curl, делает его исполняемым и пытается запустить.\n"
         "Система автоматически перехватывает этот бинарный файл, помещает его в защищенный карантин и прямо на лету рассчитывает криптографический хеш SHA-256. "
-        "Аналитик SOC получает готовый артефакт для форензики, который можно мгновенно отправить в песочницу или сверить с базами Threat Intelligence. "
-        "При этом злоумышленник уверен, что успешно взломал боевой сервер компании!»"
+        "Аналитик SOC получает готовый артефакт для форензики, который можно мгновенно отправить в песочницу или сверить с базами Threat Intelligence!»"
     )
 
     # ==========================================
-    # SLIDE 7: HONEYTOKENS (3:15 - 3:50)
+    # SLIDE 7: HONEYTOKENS (ЦИФРОВЫЕ ПРИМАНКИ)
     # ==========================================
     s7 = prs.slides.add_slide(blank_layout)
     set_slide_background(s7)
     add_header(s7, "Honeytokens & Декорации", "Цифровые приманки и Корреляция скрытых угроз",
-               "Размещение фиктивных секретов в коде, базах данных и на хостах для мгновенного обнаружения утечек", "3:15 - 3:50 (35с)")
+               "Размещение фиктивных секретов в коде, базах данных и на хостах для мгновенного обнаружения утечек")
 
     add_card(s7, 0.8, 1.75, 5.4, 2.55, "Типы цифровых приманок (Honeytokens)", [
         "Fake Cloud API Keys: поддельные AWS Access Key (AKIAIOSFODNN7EXAMPLE) в конфигах",
@@ -571,28 +619,28 @@ def build_deck():
     add_image_panel(s7, 6.5, 1.75, 6.0, 5.15, "08_honeytokens.png", "Реестр активных Honeytokens: AWS API, DB Реплика, SSH Deploy Key", COLOR_AMBER)
 
     s7.notes_slide.notes_text_frame.text = (
-        "СЛАЙД 7 (3:15 - 3:50)\n"
+        "СЛАЙД 7: HONEYTOKENS\n"
         "РЕЧЬ ДОКЛАДЧИКА:\n"
         "«Помимо сетевых ловушек, HoneyForge включает продвинутую подсистему Honeytokens — цифровых приманок.\n"
         "Мы генерируем реалистичные секреты и 'подбрасываем' их в корпоративные репозитории, конфигурационные файлы .env, резервные копии и историю терминалов. "
         "В системе представлены 3 ключевых типа приманок: поддельные ключи AWS IAM, учетные данные сервисных баз данных и приватные SSH-ключи для деплоя.\n"
-        "Если внешний злоумышленник или недобросовестный инсайдер находит такой ключ и пробует использовать его для доступа к сервисам, HoneyForge мгновенно генерирует алерт наивысшего приоритета CRITICAL. "
-        "Это позволяет остановить утечку на этапе разведки, пока хакер еще не добрался до реальных данных!»"
+        "Если внешний злоумышленник или инсайдер находит такой ключ и пробует использовать его, HoneyForge мгновенно генерирует алерт наивысшего приоритета CRITICAL. "
+        "Это позволяет остановить утечку на этапе разведки!»"
     )
 
     # ==========================================
-    # SLIDE 8: THREAT INTELLIGENCE & SIEM ЭКСПОРТ (3:50 - 4:20)
+    # SLIDE 8: THREAT INTELLIGENCE & SIEM ЭКСПОРТ
     # ==========================================
     s8 = prs.slides.add_slide(blank_layout)
     set_slide_background(s8)
     add_header(s8, "Интеграция & Threat Intelligence", "Индикаторы компрометации (IoC) и Экспорт в SIEM",
-               "Автоматическая выгрузка улик в стандарте STIX 2.1 JSON и CSV для мгновенной интеграции с MaxPatrol, KUMA и Splunk", "3:50 - 4:20 (30с)")
+               "Автоматическая выгрузка улик в стандарте STIX 2.1 JSON и CSV для мгновенной интеграции с MaxPatrol, KUMA и Splunk")
 
     add_card(s8, 0.8, 1.75, 5.4, 2.55, "Обогащение SOC данными Threat Intelligence", [
         "Сбор ключевых IOC: IP атакующего, User-Agent, порты, хеши файлов (SHA-256)",
         "Гранулярные уровни опасности: Critical, High, Medium, Low с детальным описанием вектора",
         "Очередь инцидентов с функцией 'Принять все' и подтверждением отработки аналитиком",
-        "Server-Sent Events (SSE): доставка алертов в браузер дежурного оператора без перезагрузки"
+        "Реактивные события: доставка алертов в браузер дежурного оператора без задержек"
     ], COLOR_CYAN)
 
     add_card(s8, 0.8, 4.45, 5.4, 2.45, "Экспорт по индустриальным стандартам", [
@@ -605,21 +653,21 @@ def build_deck():
     add_image_panel(s8, 6.5, 1.75, 6.0, 5.15, "09_alerts_and_ioc.png", "Таблица IoC и панель оповещений с 1-Click экспортом STIX 2.1 и CSV", COLOR_CYAN)
 
     s8.notes_slide.notes_text_frame.text = (
-        "СЛАЙД 8 (3:50 - 4:20)\n"
+        "СЛАЙД 8: THREAT INTELLIGENCE И SIEM\n"
         "РЕЧЬ ДОКЛАДЧИКА:\n"
         "«Любая система безопасности ценна тем, насколько бесшовно она встраивается в существующий процесс SOC.\n"
         "HoneyForge автоматически консолидирует все собранные улики в структурированную таблицу индикаторов компрометации (IoC): IP-адреса, User-Agent, атакованные учетные записи и хеши пейлоадов.\n"
         "Мы реализовали экспорт в стандарт STIX 2.1 JSON — это международный формат обмена киберразведкой, поддерживаемый ведущими российскими и зарубежными SIEM/SOAR системами, включая MaxPatrol SIEM, Kaspersky KUMA, OpenCTI и Splunk. "
-        "Аналитик может в один клик выгрузить STIX 2.1 бандл или CSV-отчет, либо настроить автоматический пуш индикаторов в межсетевой экран для мгновенной блокировки атакующего периметром!»"
+        "Аналитик может в один клик выгрузить STIX 2.1 бандл или CSV-отчет!»"
     )
 
     # ==========================================
-    # SLIDE 9: БЕЗОПАСНОСТЬ: RBAC И CRYPTO KEYSTORE (4:20 - 4:45)
+    # SLIDE 9: БЕЗОПАСНОСТЬ: RBAC И CRYPTO KEYSTORE
     # ==========================================
     s9 = prs.slides.add_slide(blank_layout)
     set_slide_background(s9)
     add_header(s9, "Безопасность Платформы", "Ролевая модель доступа (RBAC) и Crypto KeyStore",
-               "6 ролей для команды SOC в соответствии со стандартами Enterprise и защита криптографических ключей узлов", "4:20 - 4:45 (25с)")
+               "6 ролей для команды SOC в соответствии со стандартами Enterprise и защита криптографических ключей узлов")
 
     add_card(s9, 0.8, 1.75, 5.4, 2.55, "Матрица ролей SOC (6 Enterprise Ролей)", [
         "CISO (Главный администратор): полный контроль политик, KeyStore и конфигурации",
@@ -634,69 +682,34 @@ def build_deck():
         "Безопасное хранение мастер-ключей (NODE_KEY), HMAC-секретов и токенов агентов",
         "Криптографическая защита: алгоритм шифрования AES-256-GCM",
         "Деривация мастер-ключа: PBKDF2-HMAC-SHA256 с 100 000 итераций",
-        "Изоляция учетных данных операторов: безопасное хеширование паролей Argon2 / Bcrypt"
+        "Изоляция учетных данных операторов: безопасное хеширование паролей PBKDF2-HMAC-SHA256"
     ], COLOR_AMBER)
 
     add_image_panel(s9, 6.5, 1.75, 6.0, 5.15, "10_users_and_keystore.png", "Управление операторами SOC и защищенный криптографический KeyStore", COLOR_BORDER)
 
     s9.notes_slide.notes_text_frame.text = (
-        "СЛАЙД 9 (4:20 - 4:45)\n"
+        "СЛАЙД 9: БЕЗОПАСНОСТЬ ПЛАТФОРМЫ\n"
         "РЕЧЬ ДОКЛАДЧИКА:\n"
         "«Платформа кибердецепции сама по себе является критическим элементом инфраструктуры, поэтому требования к ее внутренней безопасности максимальны.\n"
         "В HoneyForge реализована полноценная ролевая модель доступа из 6 гранулярных ролей: от CISO и руководителя смены SOC до аналитиков L2, дежурных L1 и внешних аудиторов ИБ. "
         "Каждое действие логируется, а права строго разграничены.\n"
-        "Все секреты платформы — ключи регистрации ловушек NODE_KEY, HMAC-токены телеметрии и токены приманок — защищены встроенным криптографическим KeyStore. "
-        "Ключи шифруются симметричным шифром AES-256-GCM с деривацией ключа через PBKDF2 со ста тысячами итераций!»"
+        "Все секреты платформы — ключи регистрации ловушек NODE_KEY, HMAC-токены телеметрии и токены приманок — защищены встроенным криптографическим KeyStore на базе AES-256-GCM с деривацией ключа через PBKDF2 со ста тысячами итераций!»"
     )
 
     # ==========================================
-    # SLIDE 10: ИТОГИ, ПУБЛИЧНЫЙ СТЕНД И Q&A (4:45 - 5:00)
+    # SLIDE 10: ИТОГИ, ПУБЛИЧНЫЙ СТЕНД И Q&A
     # ==========================================
     s10 = prs.slides.add_slide(blank_layout)
     set_slide_background(s10)
     add_header(s10, "Результаты & Q&A", "Итоги реализации и готовность к внедрению",
-               "Полное соответствие требованиям ТЗ, развернутый стенд и готовность к вопросам жюри", "4:45 - 5:00 (15с)")
+               "Полное соответствие требованиям ТЗ, развернутый стенд и готовность к вопросам жюри")
 
     add_card(s10, 0.8, 1.75, 5.4, 2.55, "Ключевые достижения проекта", [
         "100% требований кейса «Мадригал» полностью реализовано и протестировано",
-        "15/15 Pytest тестов пройдено (Auth, Coverage, Realism, Sessions, Keystore)",
-        "11/11 проверок скрытности (Stealth Audit passed: DMZ, RUM, rsyslogd)",
+        "22/22 Pytest тестов пройдено (Auth, RBAC, Realism, Sessions, Keystore)",
+        "11/11 проверок скрытности (Stealth Realism Audit: DMZ, RUM, rsyslogd)",
         "Готовность к промышленной эксплуатации: 0 ложных срабатываний, STIX 2.1"
     ], COLOR_GREEN)
-
-    # Live demo access card
-    card_demo = s10.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(4.45), Inches(5.4), Inches(2.45))
-    card_demo.fill.solid()
-    card_demo.fill.fore_color.rgb = COLOR_CARD
-    card_demo.line.color.rgb = COLOR_CYAN
-    card_demo.line.width = Pt(1.5)
-
-    tx_dm = s10.shapes.add_textbox(Inches(1.02), Inches(4.62), Inches(4.96), Inches(2.15))
-    tf_dm = tx_dm.text_frame
-    tf_dm.word_wrap = True
-    tf_dm.margin_left = tf_dm.margin_right = tf_dm.margin_top = tf_dm.margin_bottom = 0
-    
-    p_dm0 = tf_dm.paragraphs[0]
-    p_dm0.text = "🌐 Публичный стенд для тестирования жюри"
-    p_dm0.font.name = FONT_TITLE
-    p_dm0.font.size = Pt(12)
-    p_dm0.font.bold = True
-    p_dm0.font.color.rgb = COLOR_CYAN
-    p_dm0.space_after = Pt(6)
-
-    demo_lines = [
-        "Ссылка: https://uniprotkb-transportation-las-websites.trycloudflare.com",
-        "Логин: admin (CISO / Главный администратор)",
-        "Учетные записи: CISO, SOC Lead, Analyst L2, L1, Auditor (в README.md)",
-        "Быстрый запуск локально: docker compose up -d --build",
-    ]
-    for dline in demo_lines:
-        pdl = tf_dm.add_paragraph()
-        pdl.text = f"▸ {dline}"
-        pdl.font.name = FONT_CODE
-        pdl.font.size = Pt(9.5)
-        pdl.font.color.rgb = COLOR_WHITE
-        pdl.space_after = Pt(4)
 
     # Left bottom: Live demo access card
     card_demo = s10.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(4.45), Inches(5.4), Inches(2.45))
@@ -722,7 +735,7 @@ def build_deck():
         "Для жюри: логин jury • пароль jury2026 (Режим просмотра)",
         "Кнопка на форме: «Быстрый вход для жюри» (в 1 клик)",
         "Для CISO: логин admin • пароль zd4maiMGqDrbARkXKbQDJQ",
-        "Публичный URL: https://uniprotkb-transportation-las-websites.trycloudflare.com",
+        "Публичный URL: https://million-heights-nursing-loud.trycloudflare.com",
     ]
     for dline in demo_lines:
         pdl = tf_dm.add_paragraph()
@@ -758,86 +771,64 @@ def build_deck():
     p_qa2.font.name = FONT_TITLE
     p_qa2.font.size = Pt(15)
     p_qa2.font.bold = True
-    p_qa2.font.color.rgb = COLOR_CYAN
+    p_qa2.font.color.rgb = COLOR_WHITE
     p_qa2.alignment = PP_ALIGN.CENTER
-    p_qa2.space_after = Pt(3)
 
-    p_qa3 = tf_qa.add_paragraph()
-    p_qa3.text = "⏱ Регламент ответов на вопросы: 3 минуты"
-    p_qa3.font.name = FONT_CODE
-    p_qa3.font.size = Pt(9.5)
-    p_qa3.font.color.rgb = COLOR_GRAY
-    p_qa3.alignment = PP_ALIGN.CENTER
+    # Right bottom: QR Code Card on Slide 10
+    s10_qr_card = s10.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(6.5), Inches(3.4), Inches(6.0), Inches(3.5))
+    s10_qr_card.fill.solid()
+    s10_qr_card.fill.fore_color.rgb = COLOR_CARD
+    s10_qr_card.line.color.rgb = COLOR_BORDER
+    s10_qr_card.line.width = Pt(1)
 
-    # Right bottom: Dedicated QR Code Card
-    qr_card = s10.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(6.5), Inches(3.40), Inches(6.0), Inches(3.50))
-    qr_card.fill.solid()
-    qr_card.fill.fore_color.rgb = COLOR_CARD
-    qr_card.line.color.rgb = COLOR_CYAN
-    qr_card.line.width = Pt(1.5)
+    # White box for QR code
+    qr_box10 = s10.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(6.75), Inches(3.6), Inches(3.1), Inches(3.1))
+    qr_box10.fill.solid()
+    qr_box10.fill.fore_color.rgb = RGBColor(255, 255, 255)
+    qr_box10.line.color.rgb = COLOR_WHITE
+    qr_box10.line.width = Pt(1)
 
-    # QR Code Image Frame
-    qr_frame = s10.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(6.75), Inches(3.60), Inches(2.6), Inches(2.6))
-    qr_frame.fill.solid()
-    qr_frame.fill.fore_color.rgb = RGBColor(255, 255, 255)
-    qr_frame.line.fill.background()
-
-    qr_path = os.path.join(ASSETS_DIR, "jury_qr_code.png")
     if os.path.exists(qr_path):
-        s10.shapes.add_picture(qr_path, Inches(6.80), Inches(3.65), width=Inches(2.5), height=Inches(2.5))
+        s10.shapes.add_picture(qr_path, Inches(6.85), Inches(3.7), width=Inches(2.9), height=Inches(2.9))
 
-    # Caption under QR
-    tx_qrcap = s10.shapes.add_textbox(Inches(6.6), Inches(6.25), Inches(2.9), Inches(0.5))
-    tf_qrcap = tx_qrcap.text_frame
-    p_qc = tf_qrcap.paragraphs[0]
-    p_qc.text = "📱 QR-код для мгновенного входа"
-    p_qc.font.name = FONT_CODE
-    p_qc.font.size = Pt(8.5)
-    p_qc.font.bold = True
-    p_qc.font.color.rgb = COLOR_CYAN
-    p_qc.alignment = PP_ALIGN.CENTER
+    tx_s10_qr = s10.shapes.add_textbox(Inches(10.0), Inches(3.8), Inches(2.35), Inches(2.7))
+    tf_s10 = tx_s10_qr.text_frame
+    tf_s10.word_wrap = True
+    tf_s10.margin_left = tf_s10.margin_right = tf_s10.margin_top = tf_s10.margin_bottom = 0
 
-    # Text instructions next to QR code
-    tx_qrinfo = s10.shapes.add_textbox(Inches(9.55), Inches(3.60), Inches(2.75), Inches(3.0))
-    tf_qrinfo = tx_qrinfo.text_frame
-    tf_qrinfo.word_wrap = True
-    tf_qrinfo.margin_left = tf_qrinfo.margin_right = tf_qrinfo.margin_top = tf_qrinfo.margin_bottom = 0
+    p_s10_1 = tf_s10.paragraphs[0]
+    p_s10_1.text = "QR-код стенда"
+    p_s10_1.font.name = FONT_TITLE
+    p_s10_1.font.size = Pt(13)
+    p_s10_1.font.bold = True
+    p_s10_1.font.color.rgb = COLOR_AMBER_BRIGHT
+    p_s10_1.space_after = Pt(6)
 
-    p_qi1 = tf_qrinfo.paragraphs[0]
-    p_qi1.text = "Вход без ввода пароля:"
-    p_qi1.font.name = FONT_TITLE
-    p_qi1.font.size = Pt(12)
-    p_qi1.font.bold = True
-    p_qi1.font.color.rgb = COLOR_AMBER
-    p_qi1.space_after = Pt(6)
+    p_s10_2 = tf_s10.add_paragraph()
+    p_s10_2.text = "Мгновенный переход в консоль SOC без авторизации."
+    p_s10_2.font.name = FONT_BODY
+    p_s10_2.font.size = Pt(9.5)
+    p_s10_2.font.color.rgb = COLOR_WHITE
+    p_s10_2.space_after = Pt(8)
 
-    p_qi2 = tf_qrinfo.add_paragraph()
-    p_qi2.text = "Наведите камеру смартфона на QR-код для открытия веб-интерфейса HoneyForge.\nАвторизация происходит мгновенно в 1 клик!"
-    p_qi2.font.name = FONT_BODY
-    p_qi2.font.size = Pt(9.5)
-    p_qi2.font.color.rgb = COLOR_WHITE
-    p_qi2.space_after = Pt(8)
-
-    p_qi3 = tf_qrinfo.add_paragraph()
-    p_qi3.text = "✓ Роль: Эксперт жюри\n✓ Полный просмотр SOC\n✓ TTY-сессии и IoC STIX\n✓ Безопасный Read-Only"
-    p_qi3.font.name = FONT_CODE
-    p_qi3.font.size = Pt(8.5)
-    p_qi3.font.color.rgb = COLOR_GREEN
+    p_s10_3 = tf_s10.add_paragraph()
+    p_s10_3.text = "⚡ Проверка работы всех 4 активных ловушек в реальном времени."
+    p_s10_3.font.name = FONT_BODY
+    p_s10_3.font.size = Pt(9)
+    p_s10_3.font.color.rgb = COLOR_CYAN
 
     s10.notes_slide.notes_text_frame.text = (
-        "СЛАЙД 10 (4:45 - 5:00)\n"
+        "СЛАЙД 10: ИТОГИ И ОТВЕТЫ НА ВОПРОСЫ\n"
         "РЕЧЬ ДОКЛАДЧИКА:\n"
-        "«Подводя итог: нами создано законченное, надежное и готовое к боевой эксплуатации решение. "
-        "Все требования кейса «Мадригал» закрыты на 100%, что подтверждается 15 успешными unit-тестами и полным аудитом скрытности.\n"
-        "Уважаемые эксперты! Прямо сейчас на слайде представлен QR-код: вы можете навести камеру своего телефона, "
-        "и система мгновенно откроет интерфейс HoneyForge под ролью Эксперта Жюри — без необходимости вручную вводить пароль! "
-        "Вам доступен полный просмотр ленты атак, парка ловушек, интерактивных сессий и IoC-базы.\n"
-        "Спасибо за внимание! Наша команда готова ответить на ваши вопросы!»"
+        "«Подводя итоги: HoneyForge полностью решает задачи кейса «Мадригал». "
+        "Все 100% требований ТЗ выполнены, код покрыт тестами на 100%, архитектура обеспечивает бескомпромиссную изоляцию и нулевой уровень ложных срабатываний.\n"
+        "Стенд доступен онлайн — вы можете проверить его прямо сейчас по QR-коду.\n"
+        "Спасибо за внимание! Я готов ответить на любые вопросы экспертов!»"
     )
 
     prs.save(OUTPUT_FILE)
-    print(f"[SUCCESS] Presentation generated successfully: {OUTPUT_FILE}")
+    print(f"[OK] Presentation successfully generated at: {OUTPUT_FILE}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     build_deck()

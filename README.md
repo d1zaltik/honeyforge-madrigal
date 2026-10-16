@@ -66,8 +66,8 @@ flowchart TD
 
 ### Вариант А: Мгновенный доступ через публичный HTTPS (Без установки)
 Платформа развернута на живом демонстрационном стенде и доступна по безопасному каналу:
-> 🌐 **Публичный адрес для жюри и экспертов:** [https://uniprotkb-transportation-las-websites.trycloudflare.com](https://uniprotkb-transportation-las-websites.trycloudflare.com)  
-> ⚡ **Мгновенный вход для жюри без ввода пароля (по ссылке / QR-коду):** [https://uniprotkb-transportation-las-websites.trycloudflare.com/?demo=jury](https://uniprotkb-transportation-las-websites.trycloudflare.com/?demo=jury)
+> 🌐 **Публичный адрес для жюри и экспертов:** [https://million-heights-nursing-loud.trycloudflare.com](https://million-heights-nursing-loud.trycloudflare.com)  
+> ⚡ **Мгновенный вход для жюри без ввода пароля (по ссылке / QR-коду):** [https://million-heights-nursing-loud.trycloudflare.com/?demo=jury](https://million-heights-nursing-loud.trycloudflare.com/?demo=jury)
 
 #### Учетные записи операторов SOC для проверки:
 | Роль в SOC | Логин | Пароль | Права доступа |
