@@ -19,6 +19,7 @@ honeyforge.db
 .cache/
 .pytest_cache/
 scratch/
+scripts/tunnel_keepalive.py
 
 # Temporary files and Office locks
 ~$*
